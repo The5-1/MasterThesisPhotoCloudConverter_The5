@@ -268,14 +268,19 @@ void init() {
 	*****************************************************************/
 	glGenBuffers(1, &mainSsboPos);
 	/*
-	UnifromBufferObjects (UBO): Read only
+	UniformBufferObjects (UBO): Read only
 	Shader Storage Buffer Objects (SSBO): Read and write
 	*/
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, mainSsboPos);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, numVertices * sizeof(glm::vec3), NULL, GL_STATIC_DRAW);
+	/*	!!!!!!!!!!!
+	Shader_Storage_Buffers need to be a multiple of 4 floats!!!
+	https://www.cg.tuwien.ac.at/courses/Realtime/repetitorium/VU.WS.2014/rtr_rep_2014_ComputeShader.pdf (Page 26 as PDF, Slide 29)
+	https://www.opengl.org/discussion_boards/showthread.php/199410-SSBO-alignment-question
+	!!!!!!!!!!!!!!! */
+	glBufferData(GL_SHADER_STORAGE_BUFFER, numVertices * sizeof(glm::vec4), NULL, GL_STATIC_DRAW);
 	
 	GLint bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-	glm::vec3 *posCS = (glm::vec3*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numVertices * sizeof(glm::vec3), bufMask);
+	glm::vec4 *posCS = (glm::vec4*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numVertices * sizeof(glm::vec4), bufMask);
 
 	/*****************************************************************
 	End Compute Shader - Setup
@@ -305,12 +310,13 @@ void init() {
 			posCS[i].x = Xf;
 			posCS[i].y = Yf;
 			posCS[i].z = Zf;
+			posCS[i].w = 1.0f;
 
 			//bigVertices.push_back(glm::vec3(Xf, Yf, Zf));
 			bigColors.push_back(color);
 	}
 
-	fclose(file);
+	std::fclose(file);
 
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -466,7 +472,7 @@ void PixelScene() {
 		//Compute
 		pcToPhotoComputeShader.enable();
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPos);
-		std::cout << "Compute Shader: " << int(mainVBOsize / work_group_size) + 1<< " workgroups" << std::endl;
+		//std::cout << "Compute Shader: " << int(mainVBOsize / work_group_size) + 1<< " workgroups" << std::endl;
 		glDispatchCompute(int(mainVBOsize / work_group_size) + 1, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		pcToPhotoComputeShader.disable();
@@ -482,7 +488,7 @@ void PixelScene() {
 
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, mainSsboPos);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
 		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, mainVBO[1]);

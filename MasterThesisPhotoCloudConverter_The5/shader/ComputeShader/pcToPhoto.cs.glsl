@@ -1,4 +1,45 @@
-#version 430 //compability
+#version 430
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 4) buffer Pos
+{
+    vec4 Position[];
+};
+
+void main() {
+	
+	vec3 pos = Position[ gl_GlobalInvocationID.x ].xyz - vec3(0.0, 0.1, 0.0);
+
+	Position[ gl_GlobalInvocationID.x ].xyzw = vec4(pos, 1.0);
+}
+
+
+/*
+//It also works with vec3 as layout (WHY!?!?!)
+#version 430
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 4) buffer Pos
+{
+    vec3 Position[];
+};
+
+void main() {
+	
+	vec3 pos = Position[ gl_GlobalInvocationID.x ].xyz - vec3(0.0, 0.1, 0.0);
+
+	Position[ gl_GlobalInvocationID.x ].xyz = pos;
+}
+*/
+
+
+
+
+
+
+
 
 //#extension GL_ARB_compute_shader: enable
 //#extension GL_ARB_shader_storage_buffer_object: enable;
@@ -14,20 +55,6 @@ layout(binding=1, rgba32f) uniform image2D outputValue;
 uniform ivec2 res;
 uniform int type;
 */
-layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
-
-layout(std430, binding = 4) buffer Pos
-{
-    vec3 Position[];
-};
-
-void main() {
-	uint gid = gl_GlobalInvocationID.x;
-
-	vec3 pos = Position[ gid ].xyz + vec3(0.1, 0.0, 0.0);
-
-	Position[ gid ].xyz = pos;
-}
 
 /* ************************************************************************
 void main() {

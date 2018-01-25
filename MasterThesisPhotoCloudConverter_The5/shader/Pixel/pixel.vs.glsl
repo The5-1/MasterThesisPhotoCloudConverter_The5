@@ -1,6 +1,6 @@
 #version 330
   
-layout(location = 0) in  vec3 vPosition; 
+layout(location = 0) in  vec4 vPosition; 
 layout(location = 1) in  vec3 vColor; 
 
 uniform float glPointSize;
@@ -14,7 +14,7 @@ void main() {
 	color = vColor;
 	//color = vec3(1.0, 0.0, 0.0);
 
-	gl_Position = projMatrix * viewMatrix * vec4(vPosition, 1.0);
+	gl_Position = projMatrix * viewMatrix * vPosition;
 
 	//gl_PointSize = glPointSize;
 	gl_PointSize = glPointSize * (1.0 - gl_Position.z/gl_Position.w);
