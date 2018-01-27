@@ -1,144 +1,40 @@
 #version 430
 
-layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+#define PI 3.141592653589793
 
-layout(std430, binding = 4) buffer Pos
-{
-    vec4 Position[];
+struct posColor {
+	vec4 position;
+	vec4 color;
 };
-
-void main() {
-	
-	vec3 pos = Position[ gl_GlobalInvocationID.x ].xyz - vec3(0.0, 0.1, 0.0);
-
-	Position[ gl_GlobalInvocationID.x ].xyzw = vec4(pos, 1.0);
-}
-
-
-/*
-//It also works with vec3 as layout (WHY!?!?!)
-#version 430
 
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
+layout(binding = 0, rgba32f) uniform image2D outputTexture;
+
 layout(std430, binding = 4) buffer Pos
 {
-    vec3 Position[];
+    posColor PosCol[];
 };
 
+uniform int width;
+uniform int height;
+
 void main() {
+	//Position
+	vec3 pos = PosCol[ gl_GlobalInvocationID.x ].position.xyz;
+	vec3 col = PosCol[ gl_GlobalInvocationID.x ].color.xyz;
 	
-	vec3 pos = Position[ gl_GlobalInvocationID.x ].xyz - vec3(0.0, 0.1, 0.0);
-
-	Position[ gl_GlobalInvocationID.x ].xyz = pos;
-}
-*/
-
-
-
-
-
-
-
-
-//#extension GL_ARB_compute_shader: enable
-//#extension GL_ARB_shader_storage_buffer_object: enable;
-
-//#define gid gl_GlobalInvocationID.x				// = gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID. 
-
-/*
-layout(local_size_x = 32, local_size_y = 32) in;
-
-layout(binding=0, rgba32f) uniform image2D inputValue;
-layout(binding=1, rgba32f) uniform image2D outputValue;
+	float r = length(pos);
+	float lon = atan(pos.z, pos.x);
+	float lat = acos(pos.y / r);
+	const vec2 radsToUnit = vec2(1.0 / (PI * 2.0), 1.0 / PI);
+	vec2 sphereCoords = vec2(lon, lat) * radsToUnit;
+	sphereCoords = vec2(fract(sphereCoords.x),1.0-sphereCoords.y);
 	
-uniform ivec2 res;
-uniform int type;
-*/
-
-/* ************************************************************************
-void main() {
-
-		vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-
-		bool alive; 
-		if(imageLoad(inputValue, ivec2(gid)).r == 1.0){
-			alive = true;
-		}
-		else{
-			alive = false;
-		}
-
-		int neighbours = 0;
-		
-		if(imageLoad(inputValue, ivec2(gid + vec2(0, 1))).r == 1.0){
-			neighbours++;
-		}
-
-		if(imageLoad(inputValue, ivec2(gid + vec2(0, -1))).r == 1.0){
-			neighbours++;
-		}
-
-		if(imageLoad(inputValue, ivec2(gid + vec2(1, 0))).r == 1.0){
-			neighbours++;
-		}
-		if(imageLoad(inputValue, ivec2(gid + vec2(-1, 0))).r == 1.0){
-			neighbours++;
-		}
-
-		if(imageLoad(inputValue, ivec2(gid + vec2(1, 1))).r == 1.0){
-			neighbours++;
-		}
-
-		if(imageLoad(inputValue, ivec2(gid + vec2(1, -1))).r == 1.0){
-			neighbours++;
-		}
-
-		if(imageLoad(inputValue, ivec2(gid + vec2(-1, -1))).r == 1.0){
-			neighbours++;
-		}
-
-		if(imageLoad(inputValue, ivec2(gid + vec2(-1, 1))).r == 1.0){
-			neighbours++;
-		}
-		
-		///////////////////////////////////////////////////////////////
-		// Interesting bugged Game of life
-		///////////////////////////////////////////////////////////////
-		if(type == 0){
-			if(neighbours < 2){
-				color = vec4(0.0, 0.0, 0.0, 1.0);
-			}
-			else if(neighbours == 2 || neighbours == 3){
-				color = vec4(1.0, 0.0, 0.0, 1.0);
-			}
-			else{
-				color = vec4(0.0, 0.0, 0.0, 1.0);
-			}
-		}
-
-		///////////////////////////////////////////////////////////////
-		// Game of life
-		///////////////////////////////////////////////////////////////
-		if(type == 1){
-			if(neighbours < 2){
-				color = vec4(0.0, 0.0, 0.0, 1.0);
-			}
-			else if(!alive && neighbours == 3){
-				color = vec4(1.0, 0.0, 0.0, 1.0);
-			}
-			else if(neighbours > 3){
-				color = vec4(0.0, 0.0, 0.0, 1.0);
-			}
-			else if((alive && neighbours == 3) || (alive && neighbours == 2)){
-				color = vec4(1.0, 0.0, 0.0, 1.0);
-			}
-			else{
-				color = vec4(0.0, 0.0, 0.0, 1.0);
-			}
-		}
-
-		imageStore(outputValue, ivec2(gid), color);
-		
+	vec3 red = vec3(1.0, 0.0, 0.0);
+	
+	imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), vec4(col, 1.0));
+	
+	//int id = int (clamp( float(gl_GlobalInvocationID.x), 0, 512) );
+	//imageStore(outputTexture, ivec2( id, id), vec4(col, 1.0));
 }
-************************************************************************ */

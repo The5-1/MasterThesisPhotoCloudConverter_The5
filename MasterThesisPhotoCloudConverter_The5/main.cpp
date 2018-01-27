@@ -92,6 +92,11 @@ Shader pixelShader;
 
 //Masterthesis - ComputeShader
 Shader pcToPhotoComputeShader;
+Shader gravityShader;
+
+//Textures
+Texture *photoTexture = nullptr;
+Texture *pointCloudTexture = nullptr;
 
 //Filter
 Shader gaussFilterShader;
@@ -128,7 +133,7 @@ glm::vec3 lightPos = glm::vec3(10.0, 10.0, 0.0);
 float glPointSizeFloat = 80.0f;
 float depthEpsilonOffset = 0.0f;
 typedef enum { QUAD_SPLATS, POINTS_GL } SPLAT_TYPE; SPLAT_TYPE m_currenSplatDraw = POINTS_GL;
-typedef enum { SIMPLE, DEBUG, DEFERRED, TRIANGLE, KERNEL, DEFERRED_UPDATE, CULL_DEFERRED} RENDER_TYPE; RENDER_TYPE m_currenRender = CULL_DEFERRED;
+typedef enum { SIMPLE, DEBUG, DEFERRED, TRIANGLE, KERNEL, DEFERRED_UPDATE, CULL_DEFERRED } RENDER_TYPE; RENDER_TYPE m_currenRender = CULL_DEFERRED;
 
 /* *********************************************************************************************************
 Helper Function
@@ -192,7 +197,8 @@ float sphereY = 0.0f;
 float sphereZ = 0.0f;
 bool wireframe = true;
 bool screenshot = false;
-
+bool gravityComputeShader = false;
+bool panoramaComputeShader = false;
 /* *********************************************************************************************************
 TweakBar
 ********************************************************************************************************* */
@@ -200,7 +206,7 @@ void setupTweakBar() {
 	TwInit(TW_OPENGL_CORE, NULL);
 	tweakBar = TwNewBar("Settings");
 
-	TwEnumVal Draw[] = { { INDEX, "INDEX" },{ ALL, "ALL" },{ DYNAMIC , "DYNAMIC"} };
+	TwEnumVal Draw[] = { { INDEX, "INDEX" },{ ALL, "ALL" },{ DYNAMIC , "DYNAMIC" } };
 	TwType SplatsTwType = TwDefineEnum("DrawType", Draw, 3);
 	TwAddVarRW(tweakBar, "Splats", SplatsTwType, &m_splatDraw, NULL);
 
@@ -213,6 +219,10 @@ void setupTweakBar() {
 
 	TwAddVarRW(tweakBar, "Wireframe", TW_TYPE_BOOLCPP, &wireframe, " label='Wireframe' ");
 	TwAddVarRW(tweakBar, "Screenshot", TW_TYPE_BOOLCPP, &screenshot, " label='Screenshot' ");
+	TwAddSeparator(tweakBar, "", NULL);
+	TwAddVarRW(tweakBar, "Gravity", TW_TYPE_BOOLCPP, &gravityComputeShader, " label='Gravity' ");
+	TwAddSeparator(tweakBar, "", NULL);
+	TwAddVarRW(tweakBar, "Get Panorama", TW_TYPE_BOOLCPP, &panoramaComputeShader, " label='Get Panorama' ");
 }
 
 /* *********************************************************************************************************
@@ -222,8 +232,15 @@ GLuint mainVBO[2];
 int mainVBOsize = 0;
 int work_group_size = 128;
 
-GLuint mainSsboPos;
-GLuint mainSsboCol;
+int pointCloudTextureHeight = 1024;
+int pointCloudTextureWidth = 1024;
+
+struct posAndCol {
+	glm::vec4 position;
+	glm::vec4 color;
+};
+
+GLuint mainSsboPosCol;
 void init() {
 	/*****************************************************************
 	Screen-Quad
@@ -249,7 +266,10 @@ void init() {
 	std::vector<glm::vec3> bigVertices, bigNormals, bigColors;
 	std::vector<float> bigRadii;
 
-	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
+	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
+	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
+	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
+
 
 	if (file == NULL) {
 		cerr << "Model file not found" << endl;
@@ -266,69 +286,64 @@ void init() {
 	/*****************************************************************
 	Start Compute Shader - Setup
 	*****************************************************************/
-	glGenBuffers(1, &mainSsboPos);
+	glGenBuffers(1, &mainSsboPosCol);
 	/*
 	UniformBufferObjects (UBO): Read only
 	Shader Storage Buffer Objects (SSBO): Read and write
 	*/
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, mainSsboPos);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, mainSsboPosCol);
 	/*	!!!!!!!!!!!
 	Shader_Storage_Buffers need to be a multiple of 4 floats!!!
 	https://www.cg.tuwien.ac.at/courses/Realtime/repetitorium/VU.WS.2014/rtr_rep_2014_ComputeShader.pdf (Page 26 as PDF, Slide 29)
 	https://www.opengl.org/discussion_boards/showthread.php/199410-SSBO-alignment-question
 	!!!!!!!!!!!!!!! */
-	glBufferData(GL_SHADER_STORAGE_BUFFER, numVertices * sizeof(glm::vec4), NULL, GL_STATIC_DRAW);
-	
+	glBufferData(GL_SHADER_STORAGE_BUFFER, numVertices * sizeof(posAndCol), NULL, GL_STATIC_DRAW);
+
 	GLint bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-	glm::vec4 *posCS = (glm::vec4*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numVertices * sizeof(glm::vec4), bufMask);
+	posAndCol *posCS = (posAndCol*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numVertices * sizeof(posAndCol), bufMask);
 
 	/*****************************************************************
 	End Compute Shader - Setup
 	*****************************************************************/
 
 	for (int i = 0; i < numVertices; i++) {
-			mainVBOsize++;
+		mainVBOsize++;
 
-			double X, Y, Z;
-			float Xf, Yf, Zf;
-			glm::vec3 color;
-			float Point_Source_ID, Scan_Angle_Rank, Time, Intensity, Classification;
+		double X, Y, Z;
+		float Xf, Yf, Zf;
+		glm::vec3 color;
+		float Point_Source_ID, Scan_Angle_Rank, Time, Intensity, Classification;
 
-			fscanf(file, "%lf %lf %lf %f %f %f %f\n", &X, &Y, &Z, &color.x, &color.y, &color.z, &Intensity);
+		fscanf(file, "%lf %lf %lf %f %f %f %f\n", &X, &Y, &Z, &color.x, &color.y, &color.z, &Intensity);
 
-			//Move the position of the Scanner to (0.0, 0.0, 0.0)
-			float scanXpos = 813.16972799999996f;
-			float scanYpos = 599.10159699999997f;
-			float scanZpos = 29.616304f;
+		//Move the position of the Scanner to (0.0, 0.0, 0.0)
+		float scanXpos = 813.16972799999996f;
+		float scanYpos = 599.10159699999997f;
+		float scanZpos = 29.616304f;
 
-			Xf = float(X) - scanXpos;
-			Yf = float(Y) - scanYpos;
-			Zf = float(Z) - scanZpos;
+		Xf = float(X) - scanXpos;
+		Yf = float(Y) - scanYpos;
+		Zf = float(Z) - scanZpos;
 
-			//std::cout << Xf << " " << Yf << " " << Zf << " " << color.x << " " << color.y << " " << color.z << std::endl;
+		posCS[i].position.x = Xf;
+		posCS[i].position.y = Zf;
+		posCS[i].position.z = Yf;
+		posCS[i].position.w = 1.0f;
 
-			posCS[i].x = Xf;
-			posCS[i].y = Yf;
-			posCS[i].z = Zf;
-			posCS[i].w = 1.0f;
-
-			//bigVertices.push_back(glm::vec3(Xf, Yf, Zf));
-			bigColors.push_back(color);
+		posCS[i].color.r = color.r;
+		posCS[i].color.g = color.g;
+		posCS[i].color.b = color.b;
+		posCS[i].color.a = 1.0f;
 	}
 
 	std::fclose(file);
 
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-
-	//Upload
-	glGenBuffers(2, mainVBO);
-	
-	//glBindBuffer(GL_ARRAY_BUFFER, mainVBO[0]);
-	//glBufferData(GL_ARRAY_BUFFER, mainVBOsize * sizeof(float) * 3, bigVertices.data(), GL_STATIC_DRAW);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, mainVBO[1]);
-	glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(float) * 3, bigColors.data(), GL_STATIC_DRAW);
+	/*****************************************************************
+	Textures (Pointcloud)
+	*****************************************************************/
+	pointCloudTexture = new Texture(pointCloudTextureWidth, pointCloudTextureHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 
 	/*****************************************************************
 	Coordinate System
@@ -371,12 +386,12 @@ void loadShader(bool init) {
 	pointDeferredShader = Shader("./shader/PointGbuffer/pointDeferred.vs.glsl", "./shader/PointGbuffer/pointDeferred.fs.glsl");
 	pointFuzzyShader = Shader("./shader/PointGbuffer/pointFuzzy.vs.glsl", "./shader/PointGbuffer/pointFuzzy.fs.glsl");
 	pointFuzzyFinalShader = Shader("./shader/PointGbuffer/pointFuzzyFinal.vs.glsl", "./shader/PointGbuffer/pointFuzzyFinal.fs.glsl");
-	
+
 	//Updated
 	pointGbufferUpdatedShader = Shader("./shader/PointGbuffer/pointGbufferUpdated.vs.glsl", "./shader/PointGbuffer/pointGbufferUpdated.fs.glsl");
 	pointDeferredUpdatedShader = Shader("./shader/PointGbuffer/pointDeferredUpdated.vs.glsl", "./shader/PointGbuffer/pointDeferredUpdated.fs.glsl");
 	pointGbufferUpdated2ndPassShader = Shader("./shader/PointGbuffer/pointGbufferUpdated2ndPass.vs.glsl", "./shader/PointGbuffer/pointGbufferUpdated2ndPass.fs.glsl");
-	
+
 
 	//FBO
 	quadScreenSizedShader = Shader("./shader/FboShader/quadScreenSized.vs.glsl", "./shader/FboShader/quadScreenSized.fs.glsl");
@@ -392,6 +407,7 @@ void loadShader(bool init) {
 
 	//ComputeShader
 	pcToPhotoComputeShader = Shader("./shader/ComputeShader/pcToPhoto.cs.glsl");
+	gravityShader = Shader("./shader/ComputeShader/gravity.cs.glsl");
 }
 
 /* *********************************************************************************************************
@@ -444,38 +460,69 @@ void PixelScene() {
 		}
 
 		/* ********************************************
-		Pointcloud
-		**********************************************/
-		/*glEnable(GL_POINT_SPRITE);
-		glEnable(GL_PROGRAM_POINT_SIZE);
-		pixelShader.enable();
-
-		pixelShader.uniform("viewMatrix", viewMatrix);
-		pixelShader.uniform("projMatrix", projMatrix);
-		pixelShader.uniform("glPointSize", glPointSizeFloat);
-
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, mainVBO[0]);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, mainVBO[1]);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glDrawArrays(GL_POINTS, 0, mainVBOsize);
-
-		pixelShader.disable();
-		glDisable(GL_POINT_SPRITE);
-		glDisable(GL_PROGRAM_POINT_SIZE);*/
-
-		/* ********************************************
 		Pointcloud + Compute Shader (Source https://www.khronos.org/assets/uploads/developers/library/2014-siggraph-bof/KITE-BOF_Aug14.pdf)
 		**********************************************/
-		//Compute
-		pcToPhotoComputeShader.enable();
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPos);
-		//std::cout << "Compute Shader: " << int(mainVBOsize / work_group_size) + 1<< " workgroups" << std::endl;
-		glDispatchCompute(int(mainVBOsize / work_group_size) + 1, 1, 1);
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-		pcToPhotoComputeShader.disable();
+		if (gravityComputeShader) {
+			//Compute
+			gravityShader.enable();
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPosCol);
+			glDispatchCompute(int(mainVBOsize / work_group_size), 1, 1);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			gravityShader.disable();
+		}
+
+		if (panoramaComputeShader) {
+			panoramaComputeShader = false;
+			/*****************************************************************
+			Fill Texture
+			*****************************************************************/
+			pcToPhotoComputeShader.enable();
+			glActiveTexture(GL_TEXTURE0);
+			pointCloudTexture->Bind();
+			glBindImageTexture(0, pointCloudTexture->Index(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+			glUniform1i(glGetUniformLocation(pcToPhotoComputeShader.ID, "width"), pointCloudTextureWidth);
+			glUniform1i(glGetUniformLocation(pcToPhotoComputeShader.ID, "height"), pointCloudTextureHeight);
+
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPosCol);
+
+			glDispatchCompute(int(mainVBOsize / work_group_size) + 1, 1, 1);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+			pcToPhotoComputeShader.disable();
+			pointCloudTexture->Unbind();
+
+			/*****************************************************************
+			Texture to PNG
+			*****************************************************************/
+
+			const size_t bytesPerChannel = 3;
+			const size_t imageSizeInBytes = bytesPerChannel * size_t(pointCloudTextureWidth) * size_t(pointCloudTextureHeight);
+			BYTE* pixels = static_cast<BYTE*>(malloc(imageSizeInBytes));
+
+			GLint m_viewport[4];
+			glGetIntegerv(GL_VIEWPORT, m_viewport);
+			glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
+			pointCloudTexture->Bind();
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+			pointCloudTexture->Unbind();
+
+			for (int y = 0; y < pointCloudTextureHeight / 2; y++)
+			{
+				const int swapY = pointCloudTextureHeight - y - 1;
+				for (int x = 0; x < pointCloudTextureWidth; x++)
+				{
+					const int offset = int(bytesPerChannel) * (x + y * pointCloudTextureWidth);
+					const int swapOffset = int(bytesPerChannel) * (x + swapY * pointCloudTextureWidth);
+					std::swap(pixels[offset + 0], pixels[swapOffset + 0]);
+					std::swap(pixels[offset + 1], pixels[swapOffset + 1]);
+					std::swap(pixels[offset + 2], pixels[swapOffset + 2]);
+				}
+			}
+			std::string name = "panoramaStation_" + std::to_string(pointCloudTextureWidth) + "x" + std::to_string(pointCloudTextureHeight) + ".png";
+			stbi_write_png(name.c_str(), pointCloudTextureWidth, pointCloudTextureHeight, 3, pixels, 0);
+		}
+
 
 		//Render
 		glEnable(GL_POINT_SPRITE);
@@ -487,12 +534,13 @@ void PixelScene() {
 		pixelShader.uniform("glPointSize", glPointSizeFloat);
 
 		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, mainSsboPos);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, mainSsboPosCol);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(posAndCol), 0);
 
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, mainVBO[1]);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, mainSsboPosCol);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(posAndCol), ((void*)(16))); //Last parameter is offset -> Before color we have a vec4 position -> 4 floats -> 16 byte offset
+																						   //glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(posAndCol), (GLvoid*)offsetof(VertexFormat, color));  //http://en.cppreference.com/w/cpp/types/offsetof , https://gamedev.stackexchange.com/questions/106141/how-to-correctly-specify-the-offset-in-a-call-to-glvertexattribpointer
 
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glDrawArrays(GL_POINTS, 0, mainVBOsize);
@@ -528,7 +576,7 @@ void PixelScene() {
 		// have allocated the exact size needed for the image so we have to use 1-byte alignment
 		// (otherwise glReadPixels would write out of bounds)
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
-		glReadPixels(m_viewport[0], m_viewport[1], width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+		glReadPixels(m_viewport[0], m_viewport[1], width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels); //Only works on FBO's
 
 		// glReadPixels reads the given rectangle from bottom-left to top-right, so we must
 		// reverse it
@@ -539,7 +587,7 @@ void PixelScene() {
 			{
 				const int offset = int(bytesPerPixel) * (x + y * width);
 				const int swapOffset = int(bytesPerPixel) * (x + swapY * width);
-		
+
 				// Swap R, G and B of the 2 pixels
 				std::swap(pixels[offset + 0], pixels[swapOffset + 0]);
 				std::swap(pixels[offset + 1], pixels[swapOffset + 1]);
@@ -576,9 +624,11 @@ void PixelScene() {
 	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glClearColor(0.2f, 0.2f, 0.2f, 1);
+
+
 	standardMiniColorFboShader.enable();
 	fbo->bindTexture(0);
 	standardMiniColorFboShader.uniform("tex", 0);
@@ -588,6 +638,17 @@ void PixelScene() {
 	fbo->unbindTexture(0);
 	standardMiniColorFboShader.disable();
 
+	
+	standardMiniColorFboShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	pointCloudTexture->Bind();
+	standardMiniColorFboShader.uniform("tex", 0);
+	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.6f, 0.6f));
+	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+	quad->draw();
+	pointCloudTexture->Unbind();
+	standardMiniColorFboShader.disable();
+	
 }
 
 /* *********************************************************************************************************
@@ -657,13 +718,3 @@ int main(int argc, char** argv) {
 
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
