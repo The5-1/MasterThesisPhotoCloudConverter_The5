@@ -30,9 +30,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-//#include <glm/gtc/matrix_transform.hpp>
-//glm::mat4 test = glm::frustum
-
 //Octree
 PC_Octree* octree = nullptr;
 
@@ -92,6 +89,7 @@ Shader pixelShader;
 
 //Masterthesis - ComputeShader
 Shader pcToPhotoComputeShader;
+Shader photoToPcComputeShader;
 Shader gravityShader;
 
 //Textures
@@ -199,6 +197,7 @@ bool wireframe = true;
 bool screenshot = false;
 bool gravityComputeShader = false;
 bool panoramaComputeShader = false;
+bool colorComputeShader = false;
 /* *********************************************************************************************************
 TweakBar
 ********************************************************************************************************* */
@@ -223,6 +222,8 @@ void setupTweakBar() {
 	TwAddVarRW(tweakBar, "Gravity", TW_TYPE_BOOLCPP, &gravityComputeShader, " label='Gravity' ");
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Get Panorama", TW_TYPE_BOOLCPP, &panoramaComputeShader, " label='Get Panorama' ");
+	TwAddSeparator(tweakBar, "", NULL);
+	TwAddVarRW(tweakBar, "Color from photo", TW_TYPE_BOOLCPP, &colorComputeShader, " label='Color from photo' ");
 }
 
 /* *********************************************************************************************************
@@ -233,7 +234,7 @@ int mainVBOsize = 0;
 int work_group_size = 128;
 
 int pointCloudTextureHeight = 1024;
-int pointCloudTextureWidth = 1024;
+int pointCloudTextureWidth = 2048;
 
 struct posAndCol {
 	glm::vec4 position;
@@ -267,9 +268,10 @@ void init() {
 	std::vector<float> bigRadii;
 
 	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
-	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
-	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
 
+	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
+	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
+	
 
 	if (file == NULL) {
 		cerr << "Model file not found" << endl;
@@ -344,6 +346,8 @@ void init() {
 	Textures (Pointcloud)
 	*****************************************************************/
 	pointCloudTexture = new Texture(pointCloudTextureWidth, pointCloudTextureHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT);
+	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
+	//photoTexture = new Texture("C:/Dev/Assets/Sponza_Atrium_Png/Textures/background.png");
 
 	/*****************************************************************
 	Coordinate System
@@ -406,7 +410,8 @@ void loadShader(bool init) {
 	oneDimKernelShader = Shader("./shader/Filter/oneDimKernel.vs.glsl", "./shader/Filter/oneDimKernel.fs.glsl");
 
 	//ComputeShader
-	pcToPhotoComputeShader = Shader("./shader/ComputeShader/pcToPhoto.cs.glsl");
+	pcToPhotoComputeShader = Shader("./shader/ComputeShader/pcToPhoto.cs.glsl"); 
+	photoToPcComputeShader = Shader("./shader/ComputeShader/photoToPc.cs.glsl");
 	gravityShader = Shader("./shader/ComputeShader/gravity.cs.glsl");
 }
 
@@ -523,6 +528,24 @@ void PixelScene() {
 			stbi_write_png(name.c_str(), pointCloudTextureWidth, pointCloudTextureHeight, 3, pixels, 0);
 		}
 
+		if (colorComputeShader) {
+			//colorComputeShader = false;
+
+			photoToPcComputeShader.enable();
+			glActiveTexture(GL_TEXTURE0);
+			photoTexture->Bind();
+			glBindImageTexture(0, photoTexture->Index(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+			glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "width"), photoTexture->w);
+			glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "height"), photoTexture->h);
+
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPosCol);
+
+			glDispatchCompute(int(mainVBOsize / work_group_size) + 1, 1, 1);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+			photoToPcComputeShader.disable();
+			photoTexture->Unbind();
+		}
 
 		//Render
 		glEnable(GL_POINT_SPRITE);
@@ -648,7 +671,18 @@ void PixelScene() {
 	quad->draw();
 	pointCloudTexture->Unbind();
 	standardMiniColorFboShader.disable();
-	
+
+
+
+	standardMiniColorFboShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	photoTexture->Bind();
+	standardMiniColorFboShader.uniform("tex", 0);
+	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.6f, 0.2f));
+	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 0.6f));
+	quad->draw();
+	photoTexture->Unbind();
+	standardMiniColorFboShader.disable();
 }
 
 /* *********************************************************************************************************
