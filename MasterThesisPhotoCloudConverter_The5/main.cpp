@@ -193,6 +193,8 @@ float sphereRadius = 1.0f;
 float sphereX = 0.0f;
 float sphereY = 0.0f;
 float sphereZ = 0.0f;
+float tc_x = 0.0f;
+float tc_y = 0.0f;
 bool wireframe = true;
 bool screenshot = false;
 bool gravityComputeShader = false;
@@ -224,6 +226,8 @@ void setupTweakBar() {
 	TwAddVarRW(tweakBar, "Get Panorama", TW_TYPE_BOOLCPP, &panoramaComputeShader, " label='Get Panorama' ");
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Color from photo", TW_TYPE_BOOLCPP, &colorComputeShader, " label='Color from photo' ");
+	TwAddVarRW(tweakBar, "TC x", TW_TYPE_FLOAT, &tc_x, " label='TC x' min=-1.0 step=0.01 max=1.0");
+	TwAddVarRW(tweakBar, "TC y", TW_TYPE_FLOAT, &tc_y, " label='TC y' min=-1.0 step=0.01 max=1.0");
 }
 
 /* *********************************************************************************************************
@@ -269,8 +273,8 @@ void init() {
 
 	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
 
-	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
-	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
+	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
+	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
 	
 
 	if (file == NULL) {
@@ -534,7 +538,10 @@ void PixelScene() {
 			photoToPcComputeShader.enable();
 			glActiveTexture(GL_TEXTURE0);
 			photoTexture->Bind();
-			glBindImageTexture(0, photoTexture->Index(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+			photoToPcComputeShader.uniform("tc_x", tc_x);
+			photoToPcComputeShader.uniform("tc_y", tc_y);
+			standardMiniColorFboShader.uniform("tex", 0);
+
 			glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "width"), photoTexture->w);
 			glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "height"), photoTexture->h);
 
