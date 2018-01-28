@@ -182,7 +182,7 @@ void drawFBO(FBO *_fbo) {
 	standardMiniColorFboShader.disable();
 }
 
-typedef enum { INDEX, ALL, DYNAMIC } DRAW_TYPE; DRAW_TYPE m_splatDraw = INDEX;
+typedef enum { CLOUD, IMAGES} DRAW_TYPE; DRAW_TYPE m_splatDraw = CLOUD;
 int index0 = 0, index1 = 0, index2 = 0;
 bool refresh = false;
 bool print = false;
@@ -207,9 +207,9 @@ void setupTweakBar() {
 	TwInit(TW_OPENGL_CORE, NULL);
 	tweakBar = TwNewBar("Settings");
 
-	TwEnumVal Draw[] = { { INDEX, "INDEX" },{ ALL, "ALL" },{ DYNAMIC , "DYNAMIC" } };
-	TwType SplatsTwType = TwDefineEnum("DrawType", Draw, 3);
-	TwAddVarRW(tweakBar, "Splats", SplatsTwType, &m_splatDraw, NULL);
+	TwEnumVal Draw[] = { { CLOUD, "Cloud" },{ IMAGES, "Images" }};
+	TwType SplatsTwType = TwDefineEnum("DrawType", Draw, 2);
+	TwAddVarRW(tweakBar, "Draw", SplatsTwType, &m_splatDraw, NULL);
 
 	TwAddSeparator(tweakBar, "Splat Draw", nullptr);
 	TwAddVarRW(tweakBar, "glPointSize", TW_TYPE_FLOAT, &glPointSizeFloat, " label='glPointSize' min=0.0 step=10.0 max=1000.0");
@@ -237,8 +237,8 @@ GLuint mainVBO[2];
 int mainVBOsize = 0;
 int work_group_size = 128;
 
-int pointCloudTextureHeight = 1024;
-int pointCloudTextureWidth = 2048;
+int pointCloudTextureHeight = 4488;
+int pointCloudTextureWidth = 8976;
 
 struct posAndCol {
 	glm::vec4 position;
@@ -352,6 +352,24 @@ void init() {
 	pointCloudTexture = new Texture(pointCloudTextureWidth, pointCloudTextureHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
 	//photoTexture = new Texture("C:/Dev/Assets/Sponza_Atrium_Png/Textures/background.png");
+
+	/*****************************************************************
+	Fill Texture
+	*****************************************************************/
+	pcToPhotoComputeShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	pointCloudTexture->Bind();
+	glBindImageTexture(0, pointCloudTexture->Index(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+	glUniform1i(glGetUniformLocation(pcToPhotoComputeShader.ID, "width"), pointCloudTextureWidth);
+	glUniform1i(glGetUniformLocation(pcToPhotoComputeShader.ID, "height"), pointCloudTextureHeight);
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPosCol);
+
+	glDispatchCompute(int(mainVBOsize / work_group_size) + 1, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	pcToPhotoComputeShader.disable();
+	pointCloudTexture->Unbind();
 
 	/*****************************************************************
 	Coordinate System

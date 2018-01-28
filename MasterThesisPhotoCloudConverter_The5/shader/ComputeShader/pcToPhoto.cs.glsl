@@ -29,10 +29,12 @@ void main() {
 	float lat = acos(pos.y / r);
 	const vec2 radsToUnit = vec2(1.0 / (PI * 2.0), 1.0 / PI);
 	vec2 sphereCoords = vec2(lon, lat) * radsToUnit;
-	sphereCoords = vec2(fract(sphereCoords.x),1.0-sphereCoords.y);
-	
-	vec3 red = vec3(1.0, 0.0, 0.0);
-	
+
+	//Rotated
+	//sphereCoords = vec2(fract(sphereCoords.x), 1.0-sphereCoords.y);
+
+	sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
+
 	imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), vec4(col, 1.0));
 	
 	//int id = int (clamp( float(gl_GlobalInvocationID.x), 0, 512) );
