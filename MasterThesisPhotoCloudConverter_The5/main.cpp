@@ -714,7 +714,6 @@ void PixelScene() {
 }
 
 void ImageScene() {
-	/*
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -723,13 +722,23 @@ void ImageScene() {
 
 	textureCompareShader.enable();
 
+
+
 	glActiveTexture(GL_TEXTURE0);
 	pointCloudTexture->Bind();
-	standardMiniColorFboShader.uniform("texture1", 0);
+	textureCompareShader.uniform("renderTexture", 0);
 
+	
+	glActiveTexture(GL_TEXTURE1);
+	photoTexture->Bind();
+	textureCompareShader.uniform("photoTexture", 1);
+	
+
+	/*
 	glActiveTexture(GL_TEXTURE5);
 	photoTexture->Bind();
-	standardMiniColorFboShader.uniform("texture2", 5);
+	glBindImageTexture(5, photoTexture->Index(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGB);
+	*/
 
 	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
 	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
@@ -739,15 +748,16 @@ void ImageScene() {
 	pointCloudTexture->Unbind();
 
 	textureCompareShader.disable();
-	*/
 
+	/*
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
-	glClearColor(0.2f, 0.2f, 0.2f, 1);
+	glClearColor(1.0f, 0.0f, 0.0f, 0.5f);
 
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFunc(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA);
 	//glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
 
 	standardMiniColorFboShader.enable();
@@ -771,6 +781,7 @@ void ImageScene() {
 	standardMiniColorFboShader.disable();
 
 	glDisable(GL_BLEND);
+	*/
 }
 
 /* *********************************************************************************************************
