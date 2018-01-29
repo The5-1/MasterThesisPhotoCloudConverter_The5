@@ -193,7 +193,7 @@ float sphereRadius = 1.0f;
 float sphereX = 0.0f;
 float sphereY = 0.0f;
 float sphereZ = 0.0f;
-float tc_x = 0.0f;
+float tc_x = 0.22f;
 float tc_y = 0.0f;
 bool wireframe = true;
 bool screenshot = false;
@@ -273,8 +273,8 @@ void init() {
 
 	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
 
-	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
-	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
+	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
+	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
 	
 
 	if (file == NULL) {
@@ -733,55 +733,17 @@ void ImageScene() {
 	photoTexture->Bind();
 	textureCompareShader.uniform("photoTexture", 1);
 	
+	textureCompareShader.uniform("tc_x", tc_x);
+	textureCompareShader.uniform("tc_y", tc_y);
 
-	/*
-	glActiveTexture(GL_TEXTURE5);
-	photoTexture->Bind();
-	glBindImageTexture(5, photoTexture->Index(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGB);
-	*/
-
-	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
-	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+	textureCompareShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
+	textureCompareShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
 
 	quad->draw();
 	photoTexture->Unbind();
 	pointCloudTexture->Unbind();
 
 	textureCompareShader.disable();
-
-	/*
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	glClearColor(1.0f, 0.0f, 0.0f, 0.5f);
-
-	glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glBlendFunc(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA);
-	//glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
-
-	standardMiniColorFboShader.enable();
-	glActiveTexture(GL_TEXTURE0);
-	photoTexture->Bind();
-	standardMiniColorFboShader.uniform("tex", 0);
-	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
-	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
-	quad->draw();
-	photoTexture->Unbind();
-	standardMiniColorFboShader.disable();
-
-	standardMiniColorFboShader.enable();
-	glActiveTexture(GL_TEXTURE0);
-	pointCloudTexture->Bind();
-	standardMiniColorFboShader.uniform("tex", 0);
-	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
-	standardMiniColorFboShader.uniform("upRight", glm::vec2(0.8f, 0.8f));
-	quad->draw();
-	pointCloudTexture->Unbind();
-	standardMiniColorFboShader.disable();
-
-	glDisable(GL_BLEND);
-	*/
 }
 
 /* *********************************************************************************************************
