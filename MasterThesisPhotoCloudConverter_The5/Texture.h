@@ -62,13 +62,21 @@ public:
 		if (data)
 		{
 			GLenum format;
-			if (nrComponents == 1)
+			if (nrComponents == 1) {
 				format = GL_RED;
-			else if (nrComponents == 3)
+			}
+			else if (nrComponents == 2) {
+				format = GL_RG;
+			}
+			else if (nrComponents == 3){
 				format = GL_RGB;
-			else if (nrComponents == 4)
+			}
+			else if (nrComponents == 4) {
 				format = GL_RGBA;
-		
+			}
+			
+			std::cout << "Texture.h: " << filepath << " has " << nrComponents << " components" << std::endl;
+
 			glBindTexture(GL_TEXTURE_2D, this->index);
 			glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_2D);
@@ -88,7 +96,7 @@ public:
 	}
 
 	void Bind() {
-		glBindTexture(GL_TEXTURE_2D, index);
+		glBindTexture(GL_TEXTURE_2D, this->index);
 	}
 
 	int Unbind() {

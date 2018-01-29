@@ -86,7 +86,7 @@ Shader pointDeferredUpdatedShader;
 Shader pointGbufferUpdated2ndPassShader;
 //Pixel
 Shader pixelShader;
-
+Shader textureCompareShader;
 //Masterthesis - ComputeShader
 Shader pcToPhotoComputeShader;
 Shader photoToPcComputeShader;
@@ -273,8 +273,8 @@ void init() {
 
 	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
 
-	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
-	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
+	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
+	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
 	
 
 	if (file == NULL) {
@@ -435,6 +435,9 @@ void loadShader(bool init) {
 	pcToPhotoComputeShader = Shader("./shader/ComputeShader/pcToPhoto.cs.glsl"); 
 	photoToPcComputeShader = Shader("./shader/ComputeShader/photoToPc.cs.glsl");
 	gravityShader = Shader("./shader/ComputeShader/gravity.cs.glsl");
+
+	//Texture Compare
+	textureCompareShader = Shader("./shader/FboShader/textureCompare.vs.glsl", "./shader/FboShader/textureCompare.fs.glsl");
 }
 
 /* *********************************************************************************************************
@@ -710,6 +713,66 @@ void PixelScene() {
 	standardMiniColorFboShader.disable();
 }
 
+void ImageScene() {
+	/*
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glClearColor(0.2f, 0.2f, 0.2f, 1);
+
+	textureCompareShader.enable();
+
+	glActiveTexture(GL_TEXTURE0);
+	pointCloudTexture->Bind();
+	standardMiniColorFboShader.uniform("texture1", 0);
+
+	glActiveTexture(GL_TEXTURE5);
+	photoTexture->Bind();
+	standardMiniColorFboShader.uniform("texture2", 5);
+
+	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
+	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+
+	quad->draw();
+	photoTexture->Unbind();
+	pointCloudTexture->Unbind();
+
+	textureCompareShader.disable();
+	*/
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glClearColor(0.2f, 0.2f, 0.2f, 1);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+
+	standardMiniColorFboShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	photoTexture->Bind();
+	standardMiniColorFboShader.uniform("tex", 0);
+	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
+	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+	quad->draw();
+	photoTexture->Unbind();
+	standardMiniColorFboShader.disable();
+
+	standardMiniColorFboShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	pointCloudTexture->Bind();
+	standardMiniColorFboShader.uniform("tex", 0);
+	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
+	standardMiniColorFboShader.uniform("upRight", glm::vec2(0.8f, 0.8f));
+	quad->draw();
+	pointCloudTexture->Unbind();
+	standardMiniColorFboShader.disable();
+
+	glDisable(GL_BLEND);
+}
+
 /* *********************************************************************************************************
 Display + Main
 ********************************************************************************************************* */
@@ -727,7 +790,13 @@ void display() {
 		glutSetWindowTitle(timeString);
 	}
 
-	PixelScene();
+	if (m_splatDraw == CLOUD) {
+		PixelScene();
+	}
+	else if (m_splatDraw == IMAGES) {
+		ImageScene();
+	}
+	
 
 	TwDraw(); //Draw Tweak-Bar
 

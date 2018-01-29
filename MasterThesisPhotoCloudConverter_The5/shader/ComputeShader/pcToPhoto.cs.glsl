@@ -1,6 +1,9 @@
 #version 430
 
 #define PI 3.141592653589793
+#define RED vec3(1.0, 0.0, 0.0)
+#define GREEN vec3(0.0, 1.0, 0.0)
+#define BLUE vec3(0.0, 0.0, 1.0)
 
 struct posColor {
 	vec4 position;
@@ -32,10 +35,10 @@ void main() {
 
 	//Rotated
 	//sphereCoords = vec2(fract(sphereCoords.x), 1.0-sphereCoords.y);
-
+	//Not Rotated
 	sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
 
-	imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), vec4(col, 1.0));
+	imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), vec4(col, 0.5));
 	
 	//int id = int (clamp( float(gl_GlobalInvocationID.x), 0, 512) );
 	//imageStore(outputTexture, ivec2( id, id), vec4(col, 1.0));
