@@ -47,7 +47,7 @@ void main()
 		col = PINK;
 	}
 
-	out0 = vec4(diff, 1.0);
+	out0 = vec4(col, 1.0);
 }
 
 

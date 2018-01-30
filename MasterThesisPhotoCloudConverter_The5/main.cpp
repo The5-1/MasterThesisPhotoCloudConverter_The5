@@ -237,8 +237,11 @@ GLuint mainVBO[2];
 int mainVBOsize = 0;
 int work_group_size = 128;
 
-int pointCloudTextureHeight = 4488;
-int pointCloudTextureWidth = 8976;
+//int pointCloudTextureHeight = 4488;
+//int pointCloudTextureWidth = 8976;
+
+int pointCloudTextureHeight = 1024;
+int pointCloudTextureWidth = 2048;
 
 struct posAndCol {
 	glm::vec4 position;
@@ -350,8 +353,10 @@ void init() {
 	Textures (Pointcloud)
 	*****************************************************************/
 	pointCloudTexture = new Texture(pointCloudTextureWidth, pointCloudTextureHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT);
-	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
-	//photoTexture = new Texture("C:/Dev/Assets/Sponza_Atrium_Png/Textures/background.png");
+
+	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
+	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
+	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/panoramaStation_8976x4488_depth_div50_scaled_withRed.png");
 
 	/*****************************************************************
 	Fill Texture

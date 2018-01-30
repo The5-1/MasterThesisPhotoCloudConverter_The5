@@ -38,8 +38,10 @@ void main() {
 	//Not Rotated
 	sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
 
-	imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), vec4(col, 0.5));
+	float alphaDistance = r / 20.0;
+	imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), vec4(col, r));
 	
-	//int id = int (clamp( float(gl_GlobalInvocationID.x), 0, 512) );
-	//imageStore(outputTexture, ivec2( id, id), vec4(col, 1.0));
+	//Distance from camerapoint
+	//vec4 alphaColor = vec4(r, r/20.0, r/50.0, r/100.0);
+	//imageStore(outputTexture, ivec2( int(sphereCoords.x * width), int(sphereCoords.y * height) ), alphaColor);
 }

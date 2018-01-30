@@ -35,10 +35,14 @@ void main() {
 	const vec2 radsToUnit = vec2(1.0 / (PI * 2.0), 1.0 / PI);
 	vec2 sphereCoords = vec2(lon, lat) * radsToUnit;
 
-	//sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
-	sphereCoords = vec2(sphereCoords.x + tc_x, sphereCoords.y + tc_y);
+	sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
+	//sphereCoords = vec2(sphereCoords.x + tc_x, sphereCoords.y + tc_y);
 
-	vec3 colTexture = texture2D(tex, sphereCoords).rgb;
+	vec2 coordinates = vec2(fract((1.0-sphereCoords.x) + tc_x), sphereCoords.y + tc_y);
+//	vec2 coordinates = vec2(sphereCoords.x,1.0-sphereCoords.y);
+
+	//vec3 colTexture = texture2D(tex, sphereCoords).rgb;
+	vec3 colTexture = texture2D(tex, coordinates).rgb;
 	PosCol[ gl_GlobalInvocationID.x ].color = vec4(colTexture, 1.0);
 }
 
