@@ -38,8 +38,15 @@ void main() {
 	sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
 	//sphereCoords = vec2(sphereCoords.x + tc_x, sphereCoords.y + tc_y);
 
-	vec2 coordinates = vec2(fract((1.0-sphereCoords.x) + tc_x), sphereCoords.y + tc_y);
-//	vec2 coordinates = vec2(sphereCoords.x,1.0-sphereCoords.y);
+	//Picture type 1
+	//vec2 coordinates = vec2(fract((1.0-sphereCoords.x) + tc_x), sphereCoords.y + tc_y);
+
+	//Picture type 2
+	vec2 coordinates = vec2(fract((1.0-sphereCoords.x)), sphereCoords.y);
+	coordinates.x = fract(1.0 - coordinates.x);
+	coordinates.y = fract(1.0 - coordinates.y);
+	
+	
 
 	//vec3 colTexture = texture2D(tex, sphereCoords).rgb;
 	vec3 colTexture = texture2D(tex, coordinates).rgb;
