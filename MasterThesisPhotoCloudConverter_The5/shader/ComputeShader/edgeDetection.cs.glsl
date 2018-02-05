@@ -34,7 +34,7 @@ void main() {
 	vec2 tc22 = vec2(float(gid.x + 1) / res.x, float(gid.y + 1) / res.y);
 
 	//Minimum DepthDifference
-	float epsilon = 0.005;
+	float epsilon = 0.03;
 
 
 

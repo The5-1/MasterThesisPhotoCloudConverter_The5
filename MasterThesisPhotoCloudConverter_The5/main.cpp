@@ -185,7 +185,7 @@ void drawFBO(FBO *_fbo) {
 	standardMiniColorFboShader.disable();
 }
 
-typedef enum { CLOUD, IMAGES, DETECTION_DEPTH} DRAW_TYPE; DRAW_TYPE m_splatDraw = CLOUD;
+typedef enum { CLOUD, IMAGES, DETECTION_DEPTH, DETECTION_DEPTH_COLOR} DRAW_TYPE; DRAW_TYPE m_splatDraw = CLOUD;
 int index0 = 0, index1 = 0, index2 = 0;
 bool refresh = false;
 bool print = false;
@@ -211,8 +211,8 @@ void setupTweakBar() {
 	TwInit(TW_OPENGL_CORE, NULL);
 	tweakBar = TwNewBar("Settings");
 
-	TwEnumVal Draw[] = { { CLOUD, "Cloud" },{ IMAGES, "Images" }, { DETECTION_DEPTH , "Detection Depth"} };
-	TwType SplatsTwType = TwDefineEnum("DrawType", Draw, 3);
+	TwEnumVal Draw[] = { { CLOUD, "Cloud" },{ IMAGES, "Images" }, { DETECTION_DEPTH , "Detection Depth"},{ DETECTION_DEPTH_COLOR , "Detection D/C" } };
+	TwType SplatsTwType = TwDefineEnum("DrawType", Draw, 4);
 	TwAddVarRW(tweakBar, "Draw", SplatsTwType, &m_splatDraw, NULL);
 
 	TwAddSeparator(tweakBar, "Splat Draw", nullptr);
@@ -243,11 +243,11 @@ GLuint mainVBO[2];
 int mainVBOsize = 0;
 int work_group_size = 128;
 
-int pointCloudTextureHeight = 4488;
-int pointCloudTextureWidth = 8976;
+//int pointCloudTextureHeight = 4488;
+//int pointCloudTextureWidth = 8976;
 
-//int pointCloudTextureHeight = 1024;
-//int pointCloudTextureWidth = 2048;
+int pointCloudTextureHeight = 1024;
+int pointCloudTextureWidth = 2048;
 
 struct posAndCol {
 	glm::vec4 position;
@@ -362,8 +362,8 @@ void init() {
 	edgeDetectionTexture = new Texture(pointCloudTextureWidth, pointCloudTextureHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 
 	//Foto
-	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
-	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
+	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
+	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
 	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/panoramaStation_8976x4488_depth_div50_scaled_withRed.png");
 	
 	//Tiefen-Foto
@@ -800,25 +800,127 @@ void EdgeDetectionScene() {
 	///////////////
 	//Draw Textures
 	///////////////
-	standardMiniColorFboShader.enable();
-	glActiveTexture(GL_TEXTURE0);
-	depthPhotoTexture->Bind();
-	standardMiniColorFboShader.uniform("tex", 0);
-	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.5f));
-	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
-	quad->draw();
-	depthPhotoTexture->Unbind();
-	standardMiniColorFboShader.disable();
+	//standardMiniColorFboShader.enable();
+	//glActiveTexture(GL_TEXTURE0);
+	//depthPhotoTexture->Bind();
+	//standardMiniColorFboShader.uniform("tex", 0);
+	//standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.5f));
+	//standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+	//quad->draw();
+	//depthPhotoTexture->Unbind();
+	//standardMiniColorFboShader.disable();
 
 	standardMiniColorFboShader.enable();
 	glActiveTexture(GL_TEXTURE0);
 	edgeDetectionTexture->Bind();
 	standardMiniColorFboShader.uniform("tex", 0);
 	standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
-	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 0.5f));
+	standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
 	quad->draw();
 	edgeDetectionTexture->Unbind();
 	standardMiniColorFboShader.disable();
+}
+
+void EdgeDetectionColorDepthScene() {
+
+	//Find Edges in image
+	edgeDetectionComputeShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	pointCloudTexture->Bind();
+	edgeDetectionComputeShader.uniform("inputValue", 0);
+	glActiveTexture(GL_TEXTURE1);
+	edgeDetectionTexture->Bind();
+	glBindImageTexture(1, edgeDetectionTexture->Index(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+	GLint work_size[3];
+	glGetProgramiv(edgeDetectionComputeShader.ID, GL_COMPUTE_WORK_GROUP_SIZE, work_size);
+	int w = pointCloudTextureWidth, h = pointCloudTextureHeight;
+	int call_x = (w / work_size[0]) + (w % work_size[0] ? 1 : 0);
+	int call_y = (h / work_size[1]) + (h % work_size[1] ? 1 : 0);
+	glUniform2i(glGetUniformLocation(edgeDetectionComputeShader.ID, "res"), w, h);
+	edgeDetectionComputeShader.uniform("type", 1);
+	glDispatchCompute(call_x, call_y, 1); //Number of work groups to be launched in x,y and z direction
+	pointCloudTexture->Unbind();
+	edgeDetectionTexture->Unbind();
+	edgeDetectionComputeShader.disable();
+
+
+	//Edge-Image to Pointcloud
+	photoToPcComputeShader.enable();
+	glActiveTexture(GL_TEXTURE0);
+	edgeDetectionTexture->Bind();
+	photoToPcComputeShader.uniform("tc_x", tc_x);
+	photoToPcComputeShader.uniform("tc_y", tc_y);
+	standardMiniColorFboShader.uniform("tex", 0);
+
+	glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "width"), edgeDetectionTexture->w);
+	glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "height"), edgeDetectionTexture->h);
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, mainSsboPosCol);
+
+	glDispatchCompute(int(mainVBOsize / work_group_size) + 1, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	photoToPcComputeShader.disable();
+	edgeDetectionTexture->Unbind();
+
+	///////////////
+	//Render Pointcloud
+	///////////////
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glClearColor(0.2f, 0.2f, 0.2f, 1);
+
+	glEnable(GL_POINT_SPRITE);
+	glEnable(GL_PROGRAM_POINT_SIZE);
+	pixelShader.enable();
+
+	pixelShader.uniform("viewMatrix", viewMatrix);
+	pixelShader.uniform("projMatrix", projMatrix);
+	pixelShader.uniform("glPointSize", glPointSizeFloat);
+
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, mainSsboPosCol);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(posAndCol), 0);
+
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, mainSsboPosCol);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(posAndCol), ((void*)(16))); //Last parameter is offset -> Before color we have a vec4 position -> 4 floats -> 16 byte offset
+																					   //glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(posAndCol), (GLvoid*)offsetof(VertexFormat, color));  //http://en.cppreference.com/w/cpp/types/offsetof , https://gamedev.stackexchange.com/questions/106141/how-to-correctly-specify-the-offset-in-a-call-to-glvertexattribpointer
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glDrawArrays(GL_POINTS, 0, mainVBOsize);
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	pixelShader.disable();
+	glDisable(GL_POINT_SPRITE);
+	glDisable(GL_PROGRAM_POINT_SIZE);
+
+	///////////////
+	//Draw Textures
+	///////////////
+	if (drawDebug) {
+		//standardMiniColorFboShader.enable();
+		//glActiveTexture(GL_TEXTURE0);
+		//pointCloudTexture->Bind();
+		//standardMiniColorFboShader.uniform("tex", 0);
+		//standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.5f));
+		//standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+		//quad->draw();
+		//pointCloudTexture->Unbind();
+		//standardMiniColorFboShader.disable();
+
+		standardMiniColorFboShader.enable();
+		glActiveTexture(GL_TEXTURE0);
+		edgeDetectionTexture->Bind();
+		standardMiniColorFboShader.uniform("tex", 0);
+		standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
+		standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+		quad->draw();
+		edgeDetectionTexture->Unbind();
+		standardMiniColorFboShader.disable();
+	}
 }
 
 /* *********************************************************************************************************
@@ -846,6 +948,9 @@ void display() {
 	}
 	else if (m_splatDraw == DETECTION_DEPTH) {
 		EdgeDetectionScene();
+	}
+	else if(m_splatDraw == DETECTION_DEPTH_COLOR){
+		EdgeDetectionColorDepthScene();
 	}
 	
 
