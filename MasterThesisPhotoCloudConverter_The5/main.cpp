@@ -135,6 +135,7 @@ float glPointSizeFloat = 80.0f;
 float depthEpsilonOffset = 0.0f;
 typedef enum { QUAD_SPLATS, POINTS_GL } SPLAT_TYPE; SPLAT_TYPE m_currenSplatDraw = POINTS_GL;
 typedef enum { SIMPLE, DEBUG, DEFERRED, TRIANGLE, KERNEL, DEFERRED_UPDATE, CULL_DEFERRED } RENDER_TYPE; RENDER_TYPE m_currenRender = CULL_DEFERRED;
+int imageType_photoToPC = 0;
 
 /* *********************************************************************************************************
 Helper Function
@@ -204,6 +205,7 @@ bool gravityComputeShader = false;
 bool panoramaComputeShader = false;
 bool colorComputeShader = false;
 bool drawDebug = true;
+float epsilon_computeShader = 0.03f;
 /* *********************************************************************************************************
 TweakBar
 ********************************************************************************************************* */
@@ -221,8 +223,14 @@ void setupTweakBar() {
 	TwAddVarRW(tweakBar, "Sphere x", TW_TYPE_FLOAT, &sphereX, " label='Sphere x' min=-100.0 step=1.0 max=100.0");
 	TwAddVarRW(tweakBar, "Sphere y", TW_TYPE_FLOAT, &sphereY, " label='Sphere y' min=-100.0 step=1.0 max=100.0");
 	TwAddVarRW(tweakBar, "Sphere z", TW_TYPE_FLOAT, &sphereZ, " label='Sphere z' min=-100.0 step=1.0 max=100.0");
+
+	TwAddSeparator(tweakBar, "", NULL);
+	TwAddVarRW(tweakBar, "Image Type", TW_TYPE_INT32, &imageType_photoToPC, " label='Image Type' min=0 step=1 max=2");
+	
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Draw Debug", TW_TYPE_BOOLCPP, &drawDebug, " label='Draw Debug' ");
+	TwAddVarRW(tweakBar, "Epsilon Edge", TW_TYPE_FLOAT, &epsilon_computeShader, " label='Epsilon Edge' min=0.0 step=0.001 max=2.0");
+
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Wireframe", TW_TYPE_BOOLCPP, &wireframe, " label='Wireframe' ");
 	TwAddVarRW(tweakBar, "Screenshot", TW_TYPE_BOOLCPP, &screenshot, " label='Screenshot' ");
@@ -362,13 +370,15 @@ void init() {
 	edgeDetectionTexture = new Texture(pointCloudTextureWidth, pointCloudTextureHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 
 	//Foto
-	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
+	//photoTexture = new Texture("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Images/superpixel_8976x4488.jpg");
 	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
 	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/panoramaStation_8976x4488_depth_div50_scaled_withRed.png");
-	
+	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
+
 	//Tiefen-Foto
 	//depthPhotoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/edgeDetection_panoramaStation_2048x1024_Color_DepthDiv20.png");
 	//depthPhotoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/edgeDetection_panoramaStation_8976x4488_Color_DepthDiv20.png");
+	//depthPhotoTexture = new Texture("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Images/panoramaStation_8976x4488_depth_div50_scaled.png");
 	depthPhotoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/panoramaStation_8976x4488_depth_div50_scaled.png");
 
 	/*****************************************************************
@@ -580,8 +590,8 @@ void PixelScene() {
 			photoTexture->Bind();
 			photoToPcComputeShader.uniform("tc_x", tc_x);
 			photoToPcComputeShader.uniform("tc_y", tc_y);
-			standardMiniColorFboShader.uniform("tex", 0);
-
+			photoToPcComputeShader.uniform("tex", 0);
+			photoToPcComputeShader.uniform("imageType", imageType_photoToPC);
 			glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "width"), photoTexture->w);
 			glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "height"), photoTexture->h);
 
@@ -838,6 +848,7 @@ void EdgeDetectionColorDepthScene() {
 	int call_y = (h / work_size[1]) + (h % work_size[1] ? 1 : 0);
 	glUniform2i(glGetUniformLocation(edgeDetectionComputeShader.ID, "res"), w, h);
 	edgeDetectionComputeShader.uniform("type", 1);
+	edgeDetectionComputeShader.uniform("epsilon", epsilon_computeShader);
 	glDispatchCompute(call_x, call_y, 1); //Number of work groups to be launched in x,y and z direction
 	pointCloudTexture->Unbind();
 	edgeDetectionTexture->Unbind();
@@ -850,7 +861,10 @@ void EdgeDetectionColorDepthScene() {
 	edgeDetectionTexture->Bind();
 	photoToPcComputeShader.uniform("tc_x", tc_x);
 	photoToPcComputeShader.uniform("tc_y", tc_y);
-	standardMiniColorFboShader.uniform("tex", 0);
+
+	photoToPcComputeShader.uniform("imageType", imageType_photoToPC);
+
+	photoToPcComputeShader.uniform("tex", 0);
 
 	glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "width"), edgeDetectionTexture->w);
 	glUniform1i(glGetUniformLocation(photoToPcComputeShader.ID, "height"), edgeDetectionTexture->h);
@@ -915,7 +929,7 @@ void EdgeDetectionColorDepthScene() {
 		glActiveTexture(GL_TEXTURE0);
 		edgeDetectionTexture->Bind();
 		standardMiniColorFboShader.uniform("tex", 0);
-		standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.0f));
+		standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.5f, 0.5f));
 		standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
 		quad->draw();
 		edgeDetectionTexture->Unbind();

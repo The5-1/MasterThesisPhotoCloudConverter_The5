@@ -19,13 +19,32 @@ void main()
 	
 	//Possible Outputs
 	//**************** 1 **************** Circle:
-	float radius = pow(FragmentIn.texcoord.x, 2.0) + pow( FragmentIn.texcoord.y, 2.0);
-	if ((radius > 1.0)) discard;
+	//Quads
+	bool discardDepth = true;
+	
+	//float radius = pow(FragmentIn.texcoord.x, 2.0) + pow( FragmentIn.texcoord.y, 2.0);
+	//if ((radius > 1.0) && discardDepth) {
+	//	discard;
+	//}
+	//out0 = vec4(FragmentIn.color, 1.0);
+	
+	//Triangles
+	float radius = pow(FragmentIn.texcoord.x + 0.5, 2.0) + pow( FragmentIn.texcoord.y - 0.5, 2.0);
+	if ((radius > 0.25) && discardDepth){ 
+		discard;
+	}
 	out0 = vec4(FragmentIn.color, 1.0);
 	
-	float gauss = texture(filter_kernel, radius).r;
-	float newDepth = gl_FragCoord.z + (1.0 - gauss);
-	gl_FragDepth = newDepth; 
+	//New Depth
+	if(discardDepth){
+		float gauss = texture(filter_kernel, radius).r;
+		float newDepth = gl_FragCoord.z + (1.0 - gauss);
+		gl_FragDepth = newDepth; 
+	}
+	
+	
+	
+	
 	//**************** 2 **************** Circle with black border box:
 	//out0 = vec4(FragmentIn.color, 1.0)*step(length(FragmentIn.texcoord),1.0); //just multiply color with 1 when legth < 1.0 and 0 otherwise
 	

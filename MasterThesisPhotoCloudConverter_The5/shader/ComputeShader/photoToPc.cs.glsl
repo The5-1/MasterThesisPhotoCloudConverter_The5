@@ -42,10 +42,12 @@ void main() {
 	//vec2 coordinates = vec2(fract((1.0-sphereCoords.x) + tc_x), sphereCoords.y + tc_y);
 
 	//Picture type 2
-	vec2 coordinates = vec2(fract((1.0-sphereCoords.x)), sphereCoords.y);
-	coordinates.x = fract(1.0 - coordinates.x);
-	coordinates.y = fract(1.0 - coordinates.y);
+	//vec2 coordinates = vec2(fract((1.0-sphereCoords.x)), sphereCoords.y);
+	//coordinates.x = fract(1.0 - coordinates.x);
+	//coordinates.y = fract(1.0 - coordinates.y);
 	
+	//Picture type 3
+	vec2 coordinates = sphereCoords;
 	
 
 	//vec3 colTexture = texture2D(tex, sphereCoords).rgb;
