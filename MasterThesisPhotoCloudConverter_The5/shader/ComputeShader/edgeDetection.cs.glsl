@@ -157,12 +157,123 @@ void main() {
 		vec4 color = texture2D(inputValue, center).rgba;
 		vec4 col4 = vec4(color.rgb, 0.5);
 		if(lumaRange < max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX)){
-			//fragColor = colorCenter;
-			//return;
 			imageStore(outputValue, ivec2(gid), col4);
 		}
 		else{
 			imageStore(outputValue, ivec2(gid), vec4(0.0, 0.0, 1.0, 1.0));
+		}
+	}
+	else if(type == 2){
+		float EDGE_THRESHOLD_MIN = 0.0312;
+		float EDGE_THRESHOLD_MAX = 0.125;
+
+		vec3 colorCenter = texture2D(inputValue, center).rgb;
+
+		// Luma at the current fragment
+		float lumaCenter = rgb2luma(colorCenter);
+
+		// Luma at the four direct neighbours of the current fragment.
+		//|----||----||----|
+		//|-00-||-01-||-02-|
+		//------------------
+		//|----||----||----|
+		//|-10-||-11-||-12-|
+		//------------------
+		//|----||----||----|
+		//|-20-||-21-||-22-|
+		//------------------
+		float lumaDown = rgb2luma(texture2D(inputValue, tc21).rgb);
+		float lumaUp = rgb2luma(texture2D(inputValue, tc01).rgb);
+		float lumaLeft = rgb2luma(texture2D(inputValue, tc10).rgb);
+		float lumaRight = rgb2luma(texture2D(inputValue, tc12).rgb);
+
+		// Find the maximum and minimum luma around the current fragment.
+		float lumaMin = min(lumaCenter,min(min(lumaDown,lumaUp),min(lumaLeft,lumaRight)));
+		float lumaMax = max(lumaCenter,max(max(lumaDown,lumaUp),max(lumaLeft,lumaRight)));
+
+		// Compute the delta.
+		float lumaRange = lumaMax - lumaMin;
+
+		//Depth Comparison
+		if(abs( texture2D(inputValue, tc00).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[0] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc01).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[1] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc02).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[2] = true;
+		}
+
+		//Second row
+		if(abs( texture2D(inputValue, tc10).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[3] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc12).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[4] = true;
+		}
+
+		//Third row
+		if(abs( texture2D(inputValue, tc20).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[5] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc21).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[6] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc22).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[7] = true;
+		}
+
+		// If the luma variation is lower that a threshold (or if we are in a really dark area), we are not on an edge, don't perform any AA.
+		vec4 color = texture2D(inputValue, center).rgba;
+		vec4 col4 = vec4(color.rgb, 0.5);
+		if(lumaRange < max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX) && !pixelFailed){
+			imageStore(outputValue, ivec2(gid), col4);
+		}
+		else if(lumaRange >= max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX) && !pixelFailed){
+			imageStore(outputValue, ivec2(gid), vec4(0.0, 0.0, 1.0, 1.0));
+		}
+		else if(lumaRange < max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX) && pixelFailed){
+			imageStore(outputValue, ivec2(gid), vec4(1.0, 0.0, 0.0, 1.0));
+		}else{
+			/*
+			// Query the 4 remaining corners lumas.
+			float lumaDownLeft = rgb2luma(texture2D(inputValue, tc20).rgb);
+			float lumaUpRight = rgb2luma(texture2D(inputValue, tc02).rgb);
+			float lumaUpLeft = rgb2luma(texture2D(inputValue, tc00).rgb);
+			float lumaDownRight = rgb2luma(texture2D(inputValue, tc22).rgb);
+
+			// Combine the four edges lumas (using intermediary variables for future computations with the same values).
+			float lumaDownUp = lumaDown + lumaUp;
+			float lumaLeftRight = lumaLeft + lumaRight;
+
+			// Same for corners
+			float lumaLeftCorners = lumaDownLeft + lumaUpLeft;
+			float lumaDownCorners = lumaDownLeft + lumaDownRight;
+			float lumaRightCorners = lumaDownRight + lumaUpRight;
+			float lumaUpCorners = lumaUpRight + lumaUpLeft;
+
+			// Compute an estimation of the gradient along the horizontal and vertical axis.
+			float edgeHorizontal =  abs(-2.0 * lumaLeft + lumaLeftCorners)  + abs(-2.0 * lumaCenter + lumaDownUp ) * 2.0    + abs(-2.0 * lumaRight + lumaRightCorners);
+			float edgeVertical =    abs(-2.0 * lumaUp + lumaUpCorners)      + abs(-2.0 * lumaCenter + lumaLeftRight) * 2.0  + abs(-2.0 * lumaDown + lumaDownCorners);
+
+			// Is the local edge horizontal or vertical ?
+			bool isHorizontal = (edgeHorizontal >= edgeVertical);
+			*/
+			imageStore(outputValue, ivec2(gid), vec4(0.0, 1.0, 0.0, 1.0));
 		}
 	}
 }
