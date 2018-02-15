@@ -136,6 +136,7 @@ float depthEpsilonOffset = 0.0f;
 typedef enum { QUAD_SPLATS, POINTS_GL } SPLAT_TYPE; SPLAT_TYPE m_currenSplatDraw = POINTS_GL;
 typedef enum { SIMPLE, DEBUG, DEFERRED, TRIANGLE, KERNEL, DEFERRED_UPDATE, CULL_DEFERRED } RENDER_TYPE; RENDER_TYPE m_currenRender = CULL_DEFERRED;
 int imageType_photoToPC = 0;
+int edgeDetectinoType = 0;
 
 /* *********************************************************************************************************
 Helper Function
@@ -186,7 +187,7 @@ void drawFBO(FBO *_fbo) {
 	standardMiniColorFboShader.disable();
 }
 
-typedef enum { CLOUD, IMAGES, DETECTION_DEPTH, DETECTION_DEPTH_COLOR} DRAW_TYPE; DRAW_TYPE m_splatDraw = CLOUD;
+typedef enum { CLOUD, IMAGES, DETECTION_DEPTH, DETECTION_DEPTH_COLOR } DRAW_TYPE; DRAW_TYPE m_splatDraw = CLOUD;
 int index0 = 0, index1 = 0, index2 = 0;
 bool refresh = false;
 bool print = false;
@@ -212,8 +213,8 @@ TweakBar
 void setupTweakBar() {
 	TwInit(TW_OPENGL_CORE, NULL);
 	tweakBar = TwNewBar("Settings");
-
-	TwEnumVal Draw[] = { { CLOUD, "Cloud" },{ IMAGES, "Images" }, { DETECTION_DEPTH , "Detection Depth"},{ DETECTION_DEPTH_COLOR , "Detection D/C" } };
+ 
+	TwEnumVal Draw[] = { { CLOUD, "Cloud" },{ IMAGES, "Images" },{ DETECTION_DEPTH , "Detection Depth" },{ DETECTION_DEPTH_COLOR , "Detection D/C" } };
 	TwType SplatsTwType = TwDefineEnum("DrawType", Draw, 4);
 	TwAddVarRW(tweakBar, "Draw", SplatsTwType, &m_splatDraw, NULL);
 
@@ -226,7 +227,8 @@ void setupTweakBar() {
 
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Image Type", TW_TYPE_INT32, &imageType_photoToPC, " label='Image Type' min=0 step=1 max=2");
-	
+	TwAddVarRW(tweakBar, "Edge Type", TW_TYPE_INT32, &edgeDetectinoType, " label='Edge Type' min=0 step=1 max=2");
+
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Draw Debug", TW_TYPE_BOOLCPP, &drawDebug, " label='Draw Debug' ");
 	TwAddVarRW(tweakBar, "Epsilon Edge", TW_TYPE_FLOAT, &epsilon_computeShader, " label='Epsilon Edge' min=0.0 step=0.001 max=2.0");
@@ -289,10 +291,11 @@ void init() {
 	std::vector<float> bigRadii;
 
 	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
+	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
 
 	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
-	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
 	
+
 
 	if (file == NULL) {
 		cerr << "Model file not found" << endl;
@@ -371,9 +374,10 @@ void init() {
 
 	//Foto
 	//photoTexture = new Texture("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Images/superpixel_8976x4488.jpg");
+	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
 	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018.jpg");
 	//photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/panoramaStation_8976x4488_depth_div50_scaled_withRed.png");
-	photoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Station018_Superpixel/1000_Superpixel/superpixel_8976x4488.jpg");
+	
 
 	//Tiefen-Foto
 	//depthPhotoTexture = new Texture("D:/Dev/Assets/Pointcloud/Station/Images/edgeDetection_panoramaStation_2048x1024_Color_DepthDiv20.png");
@@ -460,7 +464,7 @@ void loadShader(bool init) {
 	oneDimKernelShader = Shader("./shader/Filter/oneDimKernel.vs.glsl", "./shader/Filter/oneDimKernel.fs.glsl");
 
 	//ComputeShader
-	pcToPhotoComputeShader = Shader("./shader/ComputeShader/pcToPhoto.cs.glsl"); 
+	pcToPhotoComputeShader = Shader("./shader/ComputeShader/pcToPhoto.cs.glsl");
 	photoToPcComputeShader = Shader("./shader/ComputeShader/photoToPc.cs.glsl");
 	gravityShader = Shader("./shader/ComputeShader/gravity.cs.glsl");
 	edgeDetectionComputeShader = Shader("./shader/ComputeShader/edgeDetection.cs.glsl");
@@ -658,8 +662,8 @@ void PixelScene() {
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 		glReadPixels(m_viewport[0], m_viewport[1], width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels); //Only works on FBO's
 
-		// glReadPixels reads the given rectangle from bottom-left to top-right, so we must
-		// reverse it
+																									 // glReadPixels reads the given rectangle from bottom-left to top-right, so we must
+																									 // reverse it
 		for (int y = 0; y < height / 2; y++)
 		{
 			const int swapY = height - y - 1;
@@ -758,11 +762,11 @@ void ImageScene() {
 	pointCloudTexture->Bind();
 	textureCompareShader.uniform("renderTexture", 0);
 
-	
+
 	glActiveTexture(GL_TEXTURE1);
 	photoTexture->Bind();
 	textureCompareShader.uniform("photoTexture", 1);
-	
+
 	textureCompareShader.uniform("tc_x", tc_x);
 	textureCompareShader.uniform("tc_y", tc_y);
 
@@ -798,7 +802,7 @@ void EdgeDetectionScene() {
 	int call_y = (h / work_size[1]) + (h % work_size[1] ? 1 : 0);
 	glUniform2i(glGetUniformLocation(edgeDetectionComputeShader.ID, "res"), w, h);
 
-	edgeDetectionComputeShader.uniform("type", 0);
+	edgeDetectionComputeShader.uniform("type", edgeDetectinoType);
 
 	glDispatchCompute(call_x, call_y, 1); //Number of work groups to be launched in x,y and z direction
 
@@ -847,7 +851,7 @@ void EdgeDetectionColorDepthScene() {
 	int call_x = (w / work_size[0]) + (w % work_size[0] ? 1 : 0);
 	int call_y = (h / work_size[1]) + (h % work_size[1] ? 1 : 0);
 	glUniform2i(glGetUniformLocation(edgeDetectionComputeShader.ID, "res"), w, h);
-	edgeDetectionComputeShader.uniform("type", 1);
+	edgeDetectionComputeShader.uniform("type", edgeDetectinoType);
 	edgeDetectionComputeShader.uniform("epsilon", epsilon_computeShader);
 	glDispatchCompute(call_x, call_y, 1); //Number of work groups to be launched in x,y and z direction
 	pointCloudTexture->Unbind();
@@ -963,10 +967,10 @@ void display() {
 	else if (m_splatDraw == DETECTION_DEPTH) {
 		EdgeDetectionScene();
 	}
-	else if(m_splatDraw == DETECTION_DEPTH_COLOR){
+	else if (m_splatDraw == DETECTION_DEPTH_COLOR) {
 		EdgeDetectionColorDepthScene();
 	}
-	
+
 
 	TwDraw(); //Draw Tweak-Bar
 

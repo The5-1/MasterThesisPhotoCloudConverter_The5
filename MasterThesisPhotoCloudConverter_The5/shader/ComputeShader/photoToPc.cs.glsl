@@ -22,6 +22,8 @@ uniform int height;
 uniform float tc_x;
 uniform float tc_y;
 
+uniform int imageType;
+
 void main() {
 	uint gid = gl_GlobalInvocationID.x;
 
@@ -38,21 +40,25 @@ void main() {
 	sphereCoords = vec2(fract(sphereCoords.x), sphereCoords.y);
 	//sphereCoords = vec2(sphereCoords.x + tc_x, sphereCoords.y + tc_y);
 
-	//Picture type 1
-	//vec2 coordinates = vec2(fract((1.0-sphereCoords.x) + tc_x), sphereCoords.y + tc_y);
-
-	//Picture type 2
-	//vec2 coordinates = vec2(fract((1.0-sphereCoords.x)), sphereCoords.y);
-	//coordinates.x = fract(1.0 - coordinates.x);
-	//coordinates.y = fract(1.0 - coordinates.y);
-	
-	//Picture type 3
-	vec2 coordinates = sphereCoords;
-	
+	vec2 coordinates;
+	if(imageType == 0){
+		coordinates = vec2(fract((1.0-sphereCoords.x) + tc_x), sphereCoords.y + tc_y);
+	}
+	else if(imageType == 1){
+		coordinates = vec2(fract((1.0-sphereCoords.x)), sphereCoords.y);
+		coordinates.x = fract(1.0 - coordinates.x);
+		coordinates.y = fract(1.0 - coordinates.y);
+	}
+	else if(imageType == 2){
+		coordinates = sphereCoords;
+	}
 
 	//vec3 colTexture = texture2D(tex, sphereCoords).rgb;
-	vec3 colTexture = texture2D(tex, coordinates).rgb;
-	PosCol[ gl_GlobalInvocationID.x ].color = vec4(colTexture, 1.0);
+	
+	//vec4 colTexture = texture2D(tex, coordinates).rgba;
+	vec4 colTexture = vec4(texture2D(tex, coordinates).rgb, 0.5);
+	PosCol[ gl_GlobalInvocationID.x ].color = colTexture;
+	//PosCol[ gl_GlobalInvocationID.x ].color = vec4(1.0, 0.0, 0.0, 1.0);
 }
 
 

@@ -22,6 +22,16 @@ uniform float epsilon;
 //|----||----||----|
 //|-20-||-21-||-22-|
 //------------------
+
+//float rgb2luma(vec3 rgb){
+//	return dot(rgb, vec3(0.299, 0.587, 0.114));
+//}
+
+//Approximates inverse gamma transformation (http://blog.simonrodriguez.fr/articles/30-07-2016_implementing_fxaa.html)
+float rgb2luma(vec3 rgb){
+    return sqrt(dot(rgb, vec3(0.299, 0.587, 0.114)));
+}
+
 void main() {
 	//Texture-Coordinates
 	vec2 tc00 = vec2(float(gid.x - 1) / res.x, float(gid.y - 1) / res.y);
@@ -36,16 +46,12 @@ void main() {
 	vec2 tc21 = vec2(float(gid.x) / res.x, float(gid.y + 1) / res.y);
 	vec2 tc22 = vec2(float(gid.x + 1) / res.x, float(gid.y + 1) / res.y);
 
-	//Minimum DepthDifference
-	//float epsilon = 0.03;
-	//float epsilon = 0;
-
-
 	bool failingPixels[8] = {false, false, false, false, false, false, false, false};
 	bool pixelFailed = false;
+
 	//Colors
 	//First row
-	if(type == 1){
+	if(type == 0){
 		if(abs( texture2D(inputValue, tc00).a - texture2D(inputValue, center).a) > epsilon){
 			pixelFailed = true;
 			failingPixels[0] = true;
@@ -87,18 +93,77 @@ void main() {
 			pixelFailed = true;
 			failingPixels[7] = true;
 		}
-	}
 
-	//Default
-	vec4 color = texture2D(inputValue, center).rgba;
-	vec4 col4 = vec4(color.rgb, 1.0);
-	//vec4 col4 = vec4(color.a, color.a, color.a, 1.0);
-	
-	if(pixelFailed){
-		imageStore(outputValue, ivec2(gid), RED);
+		///////////////
+		//Default
+		///////////////
+		//vec4 color = texture2D(inputValue, center).rgba;
+		//vec4 col4 = vec4(color.rgb, 1.0);
+		//if(pixelFailed){
+		//	imageStore(outputValue, ivec2(gid), RED);
+		//}
+		//else{
+		//	imageStore(outputValue, ivec2(gid), col4);
+		//}
+		
+		///////////////
+		//Edge form in Alpha-Channel
+		///////////////
+		vec4 color = texture2D(inputValue, center).rgba;
+		vec4 col4 = vec4(color.rgb, 0.5);
+
+		
+		if(pixelFailed){
+			imageStore(outputValue, ivec2(gid), vec4(1.0, 0.0, 0.0, 1.0));
+		}
+		else{
+			imageStore(outputValue, ivec2(gid), col4);
+		}
+		
+		//imageStore(outputValue, ivec2(gid), col4);
 	}
-	else{
-		imageStore(outputValue, ivec2(gid), col4);
+	else if(type == 1){
+		float EDGE_THRESHOLD_MIN = 0.0312;
+		float EDGE_THRESHOLD_MAX = 0.125;
+
+		vec3 colorCenter = texture2D(inputValue, center).rgb;
+
+		// Luma at the current fragment
+		float lumaCenter = rgb2luma(colorCenter);
+
+		// Luma at the four direct neighbours of the current fragment.
+		//|----||----||----|
+		//|-00-||-01-||-02-|
+		//------------------
+		//|----||----||----|
+		//|-10-||-11-||-12-|
+		//------------------
+		//|----||----||----|
+		//|-20-||-21-||-22-|
+		//------------------
+		float lumaDown = rgb2luma(texture2D(inputValue, tc21).rgb);
+		float lumaUp = rgb2luma(texture2D(inputValue, tc01).rgb);
+		float lumaLeft = rgb2luma(texture2D(inputValue, tc10).rgb);
+		float lumaRight = rgb2luma(texture2D(inputValue, tc12).rgb);
+
+		// Find the maximum and minimum luma around the current fragment.
+		float lumaMin = min(lumaCenter,min(min(lumaDown,lumaUp),min(lumaLeft,lumaRight)));
+		float lumaMax = max(lumaCenter,max(max(lumaDown,lumaUp),max(lumaLeft,lumaRight)));
+
+		// Compute the delta.
+		float lumaRange = lumaMax - lumaMin;
+
+		// If the luma variation is lower that a threshold (or if we are in a really dark area), we are not on an edge, don't perform any AA.
+		vec4 color = texture2D(inputValue, center).rgba;
+		vec4 col4 = vec4(color.rgb, 0.5);
+		if(lumaRange < max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX)){
+			//fragColor = colorCenter;
+			//return;
+			imageStore(outputValue, ivec2(gid), col4);
+		}
+		else{
+			imageStore(outputValue, ivec2(gid), vec4(0.0, 0.0, 1.0, 1.0));
+		}
 	}
 }
 

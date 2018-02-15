@@ -9,7 +9,7 @@ How to use glPoints: https://stackoverflow.com/questions/27098315/render-large-c
 
 layout(location = 0) out vec4 outColor;
 
-in vec3 color;
+in vec4 color;
 
 void main(){ 
 	
@@ -22,15 +22,20 @@ void main(){
 
 
 	float alpha = min(1.0,(1.0-length(circCoord0*2.0-1.0))*4.0);
-	
-	
+	///////////////
+	//Draw Circle
+	///////////////
+	/*
 	if(alpha <= 0.0)
 	{
 		discard;
 	}
-
 	outColor = vec4(color,1.0);
-
+	*/
+	
+	///////////////
+	//Draw rotatable diagonal
+	///////////////
 	/*
 	if(circCoordNew.x - circCoordNew.y > 0){
 		outColor = vec4(BLUE,1.0);
@@ -39,6 +44,17 @@ void main(){
 		outColor = vec4(color,1.0);
 	}
 	*/
-
 	
+	///////////////
+	//Edge-Fitting-Splats
+	///////////////
+	if(color.a < 0){
+		outColor = vec4(BLUE,1.0);
+	}
+	else{
+		outColor = color;
+	}
+	
+	//outColor = color;
+	//outColor = vec4(color.a, color.a, color.a, color.a);
 }
