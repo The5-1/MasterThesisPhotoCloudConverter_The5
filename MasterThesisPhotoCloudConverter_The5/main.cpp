@@ -227,7 +227,7 @@ void setupTweakBar() {
 
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Image Type", TW_TYPE_INT32, &imageType_photoToPC, " label='Image Type' min=0 step=1 max=2");
-	TwAddVarRW(tweakBar, "Edge Type", TW_TYPE_INT32, &edgeDetectinoType, " label='Edge Type' min=0 step=1 max=2");
+	TwAddVarRW(tweakBar, "Edge Type", TW_TYPE_INT32, &edgeDetectinoType, " label='Edge Type' min=0 step=1 max=5");
 
 	TwAddSeparator(tweakBar, "", NULL);
 	TwAddVarRW(tweakBar, "Draw Debug", TW_TYPE_BOOLCPP, &drawDebug, " label='Draw Debug' ");
@@ -885,7 +885,7 @@ void EdgeDetectionColorDepthScene() {
 	//Render Pointcloud
 	///////////////
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
 	glClearColor(0.2f, 0.2f, 0.2f, 1);

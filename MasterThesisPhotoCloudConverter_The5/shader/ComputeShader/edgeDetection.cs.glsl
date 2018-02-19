@@ -2,6 +2,7 @@
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
 #define GREEN vec4(0.0, 1.0, 0.0, 1.0)
 #define BLUE vec4(0.0, 0.0, 1.0, 1.0)
+#define PI 3.14159265359
 #define gid gl_GlobalInvocationID.xy				// = gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID. 
 
 layout(local_size_x = 32, local_size_y = 32) in;
@@ -249,7 +250,81 @@ void main() {
 		else if(lumaRange < max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX) && pixelFailed){
 			imageStore(outputValue, ivec2(gid), vec4(1.0, 0.0, 0.0, 1.0));
 		}else{
-			/*
+			imageStore(outputValue, ivec2(gid), vec4(0.0, 1.0, 0.0, 1.0));
+		}
+	}
+	else if(type == 3){
+		float EDGE_THRESHOLD_MIN = 0.0312;
+		float EDGE_THRESHOLD_MAX = 0.125;
+
+		vec3 colorCenter = texture2D(inputValue, center).rgb;
+
+		// Luma at the current fragment
+		float lumaCenter = rgb2luma(colorCenter);
+
+		// Luma at the four direct neighbours of the current fragment.
+		float lumaDown = rgb2luma(texture2D(inputValue, tc21).rgb);
+		float lumaUp = rgb2luma(texture2D(inputValue, tc01).rgb);
+		float lumaLeft = rgb2luma(texture2D(inputValue, tc10).rgb);
+		float lumaRight = rgb2luma(texture2D(inputValue, tc12).rgb);
+
+		// Find the maximum and minimum luma around the current fragment.
+		float lumaMin = min(lumaCenter,min(min(lumaDown,lumaUp),min(lumaLeft,lumaRight)));
+		float lumaMax = max(lumaCenter,max(max(lumaDown,lumaUp),max(lumaLeft,lumaRight)));
+
+		// Compute the delta.
+		float lumaRange = lumaMax - lumaMin;
+
+		//Depth Comparison
+		if(abs( texture2D(inputValue, tc00).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[0] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc01).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[1] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc02).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[2] = true;
+		}
+
+		//Second row
+		if(abs( texture2D(inputValue, tc10).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[3] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc12).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[4] = true;
+		}
+
+		//Third row
+		if(abs( texture2D(inputValue, tc20).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[5] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc21).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[6] = true;
+		}
+
+		if(abs( texture2D(inputValue, tc22).a - texture2D(inputValue, center).a) > epsilon){
+			pixelFailed = true;
+			failingPixels[7] = true;
+		}
+
+		// If the luma variation is lower that a threshold (or if we are in a really dark area), we are not on an edge, don't perform any AA.
+		vec4 color = texture2D(inputValue, center).rgba;
+		vec4 col4 = vec4(color.rgb, -1.0);
+		if(lumaRange < max(EDGE_THRESHOLD_MIN,lumaMax*EDGE_THRESHOLD_MAX) && !pixelFailed){
+			imageStore(outputValue, ivec2(gid), col4);
+		}
+		else{
 			// Query the 4 remaining corners lumas.
 			float lumaDownLeft = rgb2luma(texture2D(inputValue, tc20).rgb);
 			float lumaUpRight = rgb2luma(texture2D(inputValue, tc02).rgb);
@@ -272,8 +347,12 @@ void main() {
 
 			// Is the local edge horizontal or vertical ?
 			bool isHorizontal = (edgeHorizontal >= edgeVertical);
-			*/
-			imageStore(outputValue, ivec2(gid), vec4(0.0, 1.0, 0.0, 1.0));
+			if(isHorizontal){
+				imageStore(outputValue, ivec2(gid), vec4(1.0, 0.0, 0.0, 0.5 * PI));
+			}
+			else{
+				imageStore(outputValue, ivec2(gid), vec4(0.0, 0.0, 1.0, 0.0));
+			}
 		}
 	}
 }

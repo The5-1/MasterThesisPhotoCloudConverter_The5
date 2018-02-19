@@ -16,9 +16,6 @@ void main(){
 	vec2 circCoord0 = gl_PointCoord;
 
 	vec2 circCoordNew = circCoord0*2.0-1.0;
-	float theta = 0.25 * PI;
-	mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
-	circCoordNew = rotationCirc * circCoordNew;
 
 
 	float alpha = min(1.0,(1.0-length(circCoord0*2.0-1.0))*4.0);
@@ -37,24 +34,54 @@ void main(){
 	//Draw rotatable diagonal
 	///////////////
 	/*
+	float theta = 0.25 * PI; // + 0.5 * PI
+	mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
+	circCoordNew = rotationCirc * circCoordNew;
 	if(circCoordNew.x - circCoordNew.y > 0){
 		outColor = vec4(BLUE,1.0);
 	}
 	else{
-		outColor = vec4(color,1.0);
+		outColor = color;
 	}
 	*/
 	
 	///////////////
-	//Edge-Fitting-Splats
+	//Does alpha channel work?
 	///////////////
+	/*
 	if(color.a < 0){
 		outColor = vec4(BLUE,1.0);
 	}
 	else{
 		outColor = color;
 	}
-	
-	//outColor = color;
-	//outColor = vec4(color.a, color.a, color.a, color.a);
+	*/
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////
+	//Horizontal / Vertical diagonal
+	///////////////
+	/*
+	if(color.a >= 0.0){
+		float theta = 0.25 * PI + color.a;
+		mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
+		circCoordNew = rotationCirc * circCoordNew;
+
+		if(circCoordNew.x - circCoordNew.y > 0){
+			outColor = vec4(BLUE,1.0);
+		}
+		else{
+			outColor = color;
+		}
+	}
+	else{
+		outColor = color;
+	}
+	*/
+
+	///////////////
+	//Color Output
+	///////////////
+	outColor = color;
 }

@@ -56,7 +56,7 @@ void main() {
 	//vec3 colTexture = texture2D(tex, sphereCoords).rgb;
 	
 	//vec4 colTexture = texture2D(tex, coordinates).rgba;
-	vec4 colTexture = vec4(texture2D(tex, coordinates).rgb, 0.5);
+	vec4 colTexture = texture2D(tex, coordinates).rgba;
 	PosCol[ gl_GlobalInvocationID.x ].color = colTexture;
 	//PosCol[ gl_GlobalInvocationID.x ].color = vec4(1.0, 0.0, 0.0, 1.0);
 }
