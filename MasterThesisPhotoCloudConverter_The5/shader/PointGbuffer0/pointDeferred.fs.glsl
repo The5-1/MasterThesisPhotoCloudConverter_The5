@@ -18,32 +18,8 @@ uniform vec3 lightVecV;
 #define BLENDING 0
 #define DEPTH_DIFFERENCE 0
 
-#define GAMMA_CORRECTION 1
-
-vec3 LinearToSRGB(vec3 linear)
-{
-#if GAMMA_CORRECTION > 0
-	return pow(linear,vec3(1.0/2.2));
-#else
-	return linear;
-#endif
-}
-
-vec3 srgbToLinear(vec3 linear)
-{
-#if GAMMA_CORRECTION > 0
-	return pow(linear,vec3(2.2));
-#else
-	return linear;
-#endif
-}
-
-
 void main(){
-
-    vec4 dif = texture2D(texColor, tc); //Fuzzy blended color goes in!
-	
-	//pointless, contain only depth again and again...
+    vec4 dif = texture2D(texColor, tc);
 	vec4 nor = texture2D(texNormal, tc);
 	vec4 pos = texture2D(texPosition, tc);
 	vec4 depth = texture2D(texDepth, tc);
@@ -59,12 +35,7 @@ void main(){
 	#endif
 
 	#ifdef BLENDING
-		outColor = dif / (dif.w); //get rid of the initial alpha of the clear color, if clearcolor is 0.0 we should be good
-
-		//outColor.rgb = LinearToSRGB(outColor.rgb * 10.0); //nanosuit is too dark, add *40.0 inside brackets! Make sure to turn on Gamma correction in this and the previous color shader!
-		outColor.rgb = LinearToSRGB(outColor.rgb);
-
-
+		outColor = dif / dif.w;
 		outNormal = nor / nor.w;
 		outPos = pos / pos.w;
 		gl_FragDepth = texture2D(texDepth, tc).r;

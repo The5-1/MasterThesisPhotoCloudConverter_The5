@@ -27,24 +27,25 @@ void main(){
 	{
 		discard;
 	}
-	outColor = vec4(color,1.0);
 	*/
+
+	//outColor = vec4(color,1.0);
+	
 	
 	///////////////
 	//Draw rotatable diagonal
 	///////////////
 	/*
-	float theta = 0.25 * PI; // + 0.5 * PI
+	float theta = PI; // + 0.5 * PI
 	mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
 	circCoordNew = rotationCirc * circCoordNew;
-	if(circCoordNew.x - circCoordNew.y > 0){
-		outColor = vec4(BLUE,1.0);
+	if(circCoordNew.x - circCoordNew.y > 0.5){
+		outColor = vec4(BLUE, 1.0);
 	}
 	else{
 		outColor = color;
 	}
 	*/
-	
 	///////////////
 	//Does alpha channel work?
 	///////////////
@@ -63,25 +64,75 @@ void main(){
 	//Horizontal / Vertical diagonal
 	///////////////
 	/*
-	if(color.a >= 0.0){
-		float theta = 0.25 * PI + color.a;
-		mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
-		circCoordNew = rotationCirc * circCoordNew;
+	if(alpha < 0){
+		discard;
+	}
+	else{
+		if(color.a >= 0.0){
+			float theta = 0.25 * PI + color.a;
+			mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
+			circCoordNew = rotationCirc * circCoordNew;
 
-		if(circCoordNew.x - circCoordNew.y > 0){
-			outColor = vec4(BLUE,1.0);
+				if(circCoordNew.x - circCoordNew.y > 0 && alpha > 0){
+				//if(alpha > 0){
+					//outColor = vec4(BLUE,1.0);
+					outColor = color;
+					//discard;
+				}
+				else{
+					//outColor = color;
+					discard;
+				}
+			
 		}
 		else{
 			outColor = color;
 		}
 	}
-	else{
-		outColor = color;
-	}
 	*/
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////
+	//Horizontal / Vertical diagonal and Translation
+	///////////////
+	if(alpha < 0){
+		discard;
+	}
+	else{
+		#if 1
+		if(color.a >= 0.0){
+			//Angle
+			#if 0
+			float alpha = 100.0 * fract(color.a); 
+			float theta = 0.25 * PI + alpha;
+			mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));
+			circCoordNew = rotationCirc * circCoordNew;
+
+			//Translation
+			float translation = (color.a - fract(color.a))/10.0;
+
+			if(circCoordNew.x - circCoordNew.y  - translation> 0 && alpha > 0){
+				outColor = color;
+			}
+			else{
+				//outColor = color;
+				discard;
+			}
+			#endif
+			outColor = color;
+		}
+		else{
+			outColor = color;
+		}
+		#endif
+		#if 0
+		outColor = color;
+		#endif
+	}
 
 	///////////////
 	//Color Output
 	///////////////
-	outColor = color;
+	//outColor = color;
 }

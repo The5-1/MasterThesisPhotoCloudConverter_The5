@@ -47,6 +47,64 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, internal_format, w, h, 0, format, type, 0);
 	}
 
+
+	//Texture(int w, int h, glm::vec4 color) {
+	//	this->w = w;
+	//	this->h = h;
+	//
+	//	glGenTextures(1, &index);
+	//	GLubyte  *emptyData = new GLubyte[w * h * 4];
+	//
+	//	for (int i = 0; i < w * h; i++) {
+	//		emptyData[4 * i + 0] = 255;
+	//		emptyData[4 * i + 1] = 255;
+	//		emptyData[4 * i + 2] = 255;
+	//		emptyData[4 * i + 3] = 255;
+	//	}
+	//
+	//	glBindTexture(GL_TEXTURE_2D, index);
+	//	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, emptyData);
+	//
+	//	delete[] emptyData;
+	//}
+
+	Texture(int w, int h, glm::vec4 color) {
+		std::cout << "Texture.h: Created test Texture" << std::endl;
+	
+		this->w = w;
+		this->h = h;
+	
+		glGenTextures(1, &index);
+		gl_check_error("Texture with data start");
+		//Data
+		//std::vector<GLfloat> emptyData(w * h * 4);
+		GLfloat *emptyData = new GLfloat[w * h * 4];
+		for (int i = 0; i < w * h; i++) {
+			emptyData[4 * i + 0] = color.x;
+			emptyData[4 * i + 1] = color.y;
+			emptyData[4 * i + 2] = color.z;
+			emptyData[4 * i + 3] = color.w;
+		}
+
+		//Bind
+		glBindTexture(GL_TEXTURE_2D, index);
+		gl_check_error("Texture with data mid");
+		//Some options
+		//glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	
+		//Use the clear color
+		//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 0, w, h, GL_RGBA, GL_FLOAT, &emptyData[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 0, w, h, GL_RGBA, GL_FLOAT, emptyData);
+		gl_check_error("Texture with data finish");
+		//Delete stuff on CPU
+		//delete[] emptyData;
+	}
+
+
 	/***********
 	Texture from image
 	***********/
@@ -75,7 +133,7 @@ public:
 				format = GL_RGBA;
 			}
 			
-			std::cout << "Texture.h: " << filepath << " has " << nrComponents << " components" << std::endl;
+			//std::cout << "Texture.h: " << filepath << " has " << nrComponents << " components" << std::endl;
 
 			glBindTexture(GL_TEXTURE_2D, this->index);
 			glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
