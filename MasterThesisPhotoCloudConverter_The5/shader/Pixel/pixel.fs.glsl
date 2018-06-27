@@ -103,7 +103,7 @@ void main(){
 		#if 1
 		if(color.a >= 0.0){
 			//Angle
-			#if 0
+			#if 1
 			float alpha = 100.0 * fract(color.a); 
 			float theta = 0.25 * PI + alpha;
 			mat2 rotationCirc = mat2(cos(theta), -sin(theta), sin(theta), cos(theta));

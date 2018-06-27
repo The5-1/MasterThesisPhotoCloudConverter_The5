@@ -195,7 +195,7 @@ void drawFBO(FBO *_fbo) {
 }
 
 typedef enum { CLOUD, IMAGES, DETECTION_DEPTH, DETECTION_DEPTH_COLOR, DETECTION_DEPTH_COLOR_IMPROVED, FUZZY} DRAW_TYPE; 
-DRAW_TYPE m_splatDraw = DETECTION_DEPTH_COLOR;
+DRAW_TYPE m_splatDraw = CLOUD;
 int index0 = 0, index1 = 0, index2 = 0;
 bool refresh = false;
 bool print = false;
@@ -312,13 +312,88 @@ void init() {
 	/*****************************************************************
 	obj-Models
 	*****************************************************************/
+	//std::vector<glm::vec3> bigVertices, bigNormals, bigColors;
+	//std::vector<float> bigRadii;
+
+	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Navvi/Navvi_4000000.txt", "r");
+
+
+
+	//if (file == NULL) {
+	//	cerr << "Model file not found" << endl;
+	//	exit(0);
+	//}
+
+	//char lineHeader[128];
+	//fgets(lineHeader, 128, file); //Reads the first line, which contains the build of the file (We just assume they are always build the same way)
+
+	//int numVertices;
+	//fscanf(file, "%i\n", &numVertices);
+	//std::cout << "Load Point-Cloud from Text file: " << numVertices << " numVertices" << std::endl;
+
+	///*****************************************************************
+	//Start Compute Shader - Setup
+	//*****************************************************************/
+	//glGenBuffers(1, &mainSsboPosCol);
+	///*
+	//UniformBufferObjects (UBO): Read only
+	//Shader Storage Buffer Objects (SSBO): Read and write
+	//*/
+	//glBindBuffer(GL_SHADER_STORAGE_BUFFER, mainSsboPosCol);
+	///*	!!!!!!!!!!!
+	//Shader_Storage_Buffers need to be a multiple of 4 floats!!!
+	//https://www.cg.tuwien.ac.at/courses/Realtime/repetitorium/VU.WS.2014/rtr_rep_2014_ComputeShader.pdf (Page 26 as PDF, Slide 29)
+	//https://www.opengl.org/discussion_boards/showthread.php/199410-SSBO-alignment-question
+	//!!!!!!!!!!!!!!! */
+	//glBufferData(GL_SHADER_STORAGE_BUFFER, numVertices * sizeof(posAndCol), NULL, GL_STATIC_DRAW);
+
+	//GLint bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+	//posAndCol *posCS = (posAndCol*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numVertices * sizeof(posAndCol), bufMask);
+
+	///*****************************************************************
+	//End Compute Shader - Setup
+	//*****************************************************************/
+
+	//for (int i = 0; i < numVertices; i++) {
+	//	mainVBOsize++;
+
+	//	double X, Y, Z;
+	//	float Xf, Yf, Zf;
+	//	glm::vec3 color;
+	//	glm::vec3 normal;
+
+	//	float Point_Source_ID, Scan_Angle_Rank, Time, Intensity, Classification;
+
+	//	fscanf(file, "%lf %lf %lf %f %f %f %f %f %f\n", &X, &Y, &Z, &color.x, &color.y, &color.z, &normal.x, &normal.y, &normal.z);
+
+	//	//Move the position of the Scanner to (0.0, 0.0, 0.0)
+	//	float scanXpos = 0.0f;
+	//	float scanYpos = 0.0f;
+	//	float scanZpos = 0.0f;
+
+	//	Xf = float(X) - scanXpos;
+	//	Yf = float(Y) - scanYpos;
+	//	Zf = float(Z) - scanZpos;
+
+	//	posCS[i].position.x = Xf;
+	//	posCS[i].position.y = Zf;
+	//	posCS[i].position.z = Yf;
+	//	posCS[i].position.w = 1.0f;
+
+	//	posCS[i].color.r = color.r;
+	//	posCS[i].color.g = color.g;
+	//	posCS[i].color.b = color.b;
+	//	posCS[i].color.a = 1.0f;
+	//}
+
+	//std::fclose(file);
+
+	//glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
 	std::vector<glm::vec3> bigVertices, bigNormals, bigColors;
 	std::vector<float> bigRadii;
 
-	//FILE * file = fopen("//home.rrze.uni-erlangen.de/ar81ohoq/Desktop/Dev/Assets/Pointclouds/Station018.txt", "r");
 	FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Station018.txt", "r");
-
-	//FILE * file = fopen("D:/Dev/Assets/Pointcloud/Station/Segmented300k/Station018.txt", "r");
 	
 
 
@@ -390,6 +465,15 @@ void init() {
 	std::fclose(file);
 
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+
+
+
+
+
+
+
+
 
 	/*****************************************************************
 	Textures (Pointcloud)
@@ -965,15 +1049,15 @@ void EdgeDetectionColorDepthScene() {
 	//Draw Textures
 	///////////////
 	if (drawDebug) {
-		//standardMiniColorFboShader.enable();
-		//glActiveTexture(GL_TEXTURE0);
-		//pointCloudTexture->Bind();
-		//standardMiniColorFboShader.uniform("tex", 0);
-		//standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.5f));
-		//standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
-		//quad->draw();
-		//pointCloudTexture->Unbind();
-		//standardMiniColorFboShader.disable();
+		standardMiniColorFboShader.enable();
+		glActiveTexture(GL_TEXTURE0);
+		pointCloudTexture->Bind();
+		standardMiniColorFboShader.uniform("tex", 0);
+		standardMiniColorFboShader.uniform("downLeft", glm::vec2(0.0f, 0.5f));
+		standardMiniColorFboShader.uniform("upRight", glm::vec2(1.0f, 1.0f));
+		quad->draw();
+		pointCloudTexture->Unbind();
+		standardMiniColorFboShader.disable();
 
 		standardMiniColorFboShader.enable();
 		glActiveTexture(GL_TEXTURE0);
